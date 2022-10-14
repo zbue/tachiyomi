@@ -23,6 +23,7 @@ import eu.kanade.domain.manga.model.Manga
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.components.MangaCover
 import eu.kanade.presentation.util.horizontalPadding
+import eu.kanade.presentation.util.secondaryItemAlpha
 import eu.kanade.tachiyomi.util.lang.toRelativeString
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -81,12 +82,16 @@ private val defaultContent: @Composable RowScope.(Manga) -> Unit = {
             Icon(
                 imageVector = Icons.Filled.CalendarMonth,
                 contentDescription = "",
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier
+                    .size(16.dp)
+                    .secondaryItemAlpha(),
             )
             Text(
                 text = dateAdded,
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(start = 2.dp),
+                modifier = Modifier
+                    .padding(start = 2.dp)
+                    .secondaryItemAlpha(),
             )
         }
     }
