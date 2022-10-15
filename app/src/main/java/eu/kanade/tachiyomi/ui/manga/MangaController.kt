@@ -157,6 +157,7 @@ class MangaController : FullComposeController<MangaPresenter> {
             }
             is Dialog.DeleteChapters -> {
                 DeleteChaptersDialog(
+                    showCheckbox = dialog.chapters.any { it.bookmark },
                     onDismissRequest = onDismissRequest,
                     onConfirm = {
                         presenter.toggleAllSelection(false)
