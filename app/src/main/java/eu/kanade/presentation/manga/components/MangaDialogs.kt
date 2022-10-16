@@ -18,19 +18,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import eu.kanade.domain.download.service.DownloadPreferences
 import eu.kanade.tachiyomi.R
-import uy.kohesive.injekt.Injekt
-import uy.kohesive.injekt.api.get
 
 @Composable
 fun DeleteChaptersDialog(
+    checked: Boolean,
     showCheckbox: Boolean,
     onDismissRequest: () -> Unit,
-    onConfirm: () -> Unit,
-    preferences: DownloadPreferences = Injekt.get(),
+    onConfirm: (Boolean) -> Unit,
 ) {
-    var allow by remember { mutableStateOf(preferences.removeBookmarkedChapters().get()) }
+    var allow by remember { mutableStateOf(checked) }
 
     AlertDialog(
         title = {
@@ -73,8 +70,7 @@ fun DeleteChaptersDialog(
             TextButton(
                 onClick = {
                     onDismissRequest()
-                    preferences.removeBookmarkedChapters().set(allow)
-                    onConfirm()
+                    onConfirm(allow)
                 },
             ) {
                 Text(text = stringResource(android.R.string.ok))

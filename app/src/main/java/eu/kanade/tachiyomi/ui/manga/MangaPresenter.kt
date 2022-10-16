@@ -138,6 +138,8 @@ class MangaPresenter(
 
     private val selectedPositions: Array<Int> = arrayOf(-1, -1) // first and last selected index in list
 
+    val removeBookmarkedChapters get() = downloadPreferences.removeBookmarkedChapters()
+
     /**
      * Helper function to update the UI state only if it's currently in success state
      */
