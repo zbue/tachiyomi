@@ -2,7 +2,6 @@ package eu.kanade.tachiyomi.ui.updates
 
 import android.app.Application
 import android.content.Context
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -12,9 +11,9 @@ import eu.kanade.core.prefs.asState
 import eu.kanade.core.util.addOrRemove
 import eu.kanade.core.util.insertSeparators
 import eu.kanade.domain.chapter.interactor.GetChapter
+import eu.kanade.domain.chapter.interactor.GetChapterByMangaId
+import eu.kanade.domain.chapter.interactor.SetBookmarkStatus
 import eu.kanade.domain.chapter.interactor.SetReadStatus
-import eu.kanade.domain.chapter.interactor.UpdateChapter
-import eu.kanade.domain.chapter.model.ChapterUpdate
 import eu.kanade.domain.library.service.LibraryPreferences
 import eu.kanade.domain.manga.interactor.GetManga
 import eu.kanade.domain.ui.UiPreferences
@@ -54,18 +53,18 @@ class UpdatesScreenModel(
     private val sourceManager: SourceManager = Injekt.get(),
     private val downloadManager: DownloadManager = Injekt.get(),
     private val downloadCache: DownloadCache = Injekt.get(),
-    private val updateChapter: UpdateChapter = Injekt.get(),
+    private val setBookmarkStatus: SetBookmarkStatus = Injekt.get(),
     private val setReadStatus: SetReadStatus = Injekt.get(),
     private val getUpdates: GetUpdates = Injekt.get(),
     private val getManga: GetManga = Injekt.get(),
     private val getChapter: GetChapter = Injekt.get(),
+    private val getChaptersByMangaId: GetChapterByMangaId = Injekt.get(),
     private val libraryPreferences: LibraryPreferences = Injekt.get(),
-    val snackbarHostState: SnackbarHostState = SnackbarHostState(),
     uiPreferences: UiPreferences = Injekt.get(),
 ) : StateScreenModel<UpdatesState>(UpdatesState()) {
 
-    private val _events: Channel<Event> = Channel(Int.MAX_VALUE)
-    val events: Flow<Event> = _events.receiveAsFlow()
+    private val _snackbar: Channel<Snackbar> = Channel(Channel.CONFLATED)
+    val snackbar: Flow<Snackbar> = _snackbar.receiveAsFlow()
 
     val lastUpdated by libraryPreferences.libraryUpdateLastTimestamp().asState(coroutineScope)
 
@@ -90,7 +89,7 @@ class UpdatesScreenModel(
             ) { updates, _ -> updates }
                 .catch {
                     logcat(LogPriority.ERROR, it)
-                    _events.send(Event.InternalError)
+                    _snackbar.send(Snackbar.InternalError)
                 }
                 .collectLatest { updates ->
                     mutableState.update {
@@ -132,12 +131,16 @@ class UpdatesScreenModel(
         }
     }
 
-    fun updateLibrary(): Boolean {
+    fun onLibraryUpdateTriggered(): Boolean {
         val started = LibraryUpdateService.start(Injekt.get<Application>())
         coroutineScope.launch {
-            _events.send(Event.LibraryUpdateTriggered(started))
+            _snackbar.send(Snackbar.LibraryUpdateTriggered(started))
         }
         return started
+    }
+
+    fun onLibraryUpdateCancelled() {
+        LibraryUpdateService.stop(Injekt.get<Application>())
     }
 
     /**
@@ -207,8 +210,9 @@ class UpdatesScreenModel(
      */
     fun markUpdatesRead(updates: List<UpdatesItem>, read: Boolean) {
         coroutineScope.launchIO {
-            setReadStatus.await(
+            setReadStatus.awaitAll(
                 read = read,
+                isFinalized = true,
                 chapters = updates
                     .mapNotNull { getChapter.await(it.update.chapterId) }
                     .toTypedArray(),
@@ -223,10 +227,12 @@ class UpdatesScreenModel(
      */
     fun bookmarkUpdates(updates: List<UpdatesItem>, bookmark: Boolean) {
         coroutineScope.launchIO {
-            updates
-                .filterNot { it.update.bookmark == bookmark }
-                .map { ChapterUpdate(id = it.update.chapterId, bookmark = bookmark) }
-                .let { updateChapter.awaitAll(it) }
+            setBookmarkStatus.awaitAll(
+                bookmark = bookmark,
+                chapters = updates
+                    .mapNotNull { getChapter.await(it.update.chapterId) }
+                    .toTypedArray(),
+            )
         }
         toggleAllSelection(false)
     }
@@ -374,9 +380,9 @@ class UpdatesScreenModel(
         data class DeleteConfirmation(val toDelete: List<UpdatesItem>) : Dialog()
     }
 
-    sealed class Event {
-        object InternalError : Event()
-        data class LibraryUpdateTriggered(val started: Boolean) : Event()
+    sealed class Snackbar {
+        object InternalError : Snackbar()
+        data class LibraryUpdateTriggered(val started: Boolean) : Snackbar()
     }
 }
 

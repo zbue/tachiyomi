@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -45,7 +46,6 @@ import eu.kanade.presentation.library.components.LibraryToolbar
 import eu.kanade.presentation.manga.components.DownloadCustomAmountDialog
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
-import eu.kanade.tachiyomi.data.library.LibraryUpdateService
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import eu.kanade.tachiyomi.ui.home.HomeScreen
@@ -88,14 +88,6 @@ object LibraryTab : Tab {
 
         val snackbarHostState = remember { SnackbarHostState() }
 
-        val onClickRefresh: (Category?) -> Boolean = {
-            val started = LibraryUpdateService.start(context, it)
-            scope.launch {
-                val msgRes = if (started) R.string.updating_category else R.string.update_already_running
-                snackbarHostState.showSnackbar(context.getString(msgRes))
-            }
-            started
-        }
         val onClickFilter: () -> Unit = {
             scope.launch { sendSettingsSheetIntent(state.categories[screenModel.activeCategoryIndex]) }
         }
@@ -116,14 +108,14 @@ object LibraryTab : Tab {
                     onClickSelectAll = { screenModel.selectAll(screenModel.activeCategoryIndex) },
                     onClickInvertSelection = { screenModel.invertSelection(screenModel.activeCategoryIndex) },
                     onClickFilter = onClickFilter,
-                    onClickRefresh = { onClickRefresh(null) },
+                    onClickRefresh = { screenModel.onLibraryUpdateTriggered(null) },
                     onClickOpenRandomManga = {
                         scope.launch {
                             val randomItem = screenModel.getRandomLibraryItemForCurrentCategory()
                             if (randomItem != null) {
                                 navigator.push(MangaScreen(randomItem.libraryManga.manga.id))
                             } else {
-                                snackbarHostState.showSnackbar(context.getString(R.string.information_no_entries_found))
+                                screenModel.showOpenRandomLibraryItemErrorSnackbar()
                             }
                         }
                     },
@@ -178,7 +170,7 @@ object LibraryTab : Tab {
                                 if (chapter != null) {
                                     context.startActivity(ReaderActivity.newIntent(context, chapter.mangaId, chapter.id))
                                 } else {
-                                    snackbarHostState.showSnackbar(context.getString(R.string.no_next_chapter))
+                                    screenModel.showNoNextChapterFoundSnackbar()
                                 }
                             }
                             Unit
@@ -188,7 +180,7 @@ object LibraryTab : Tab {
                             screenModel.toggleRangeSelection(it)
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         },
-                        onRefresh = onClickRefresh,
+                        onRefresh = { screenModel.onLibraryUpdateTriggered(it) },
                         onGlobalSearchClicked = {
                             navigator.push(GlobalSearchScreen(screenModel.state.value.searchQuery ?: ""))
                         },
@@ -253,6 +245,38 @@ object LibraryTab : Tab {
         LaunchedEffect(state.isLoading) {
             if (!state.isLoading) {
                 (context as? MainActivity)?.ready = true
+            }
+        }
+
+        LaunchedEffect(Unit) {
+            screenModel.snackbar.collectLatest { snackbar ->
+                when (snackbar) {
+                    LibraryScreenModel.Snackbar.OpenRandomLibraryItemError -> {
+                        snackbarHostState.showSnackbar(message = context.getString(R.string.information_no_entries_found), withDismissAction = true)
+                    }
+                    LibraryScreenModel.Snackbar.NoNextChapterFound -> {
+                        snackbarHostState.showSnackbar(message = context.getString(R.string.no_next_chapter), withDismissAction = true)
+                    }
+                    is LibraryScreenModel.Snackbar.LibraryUpdateTriggered -> {
+                        val msgRes = if (snackbar.started) {
+                            if (snackbar.category != null) {
+                                R.string.updating_category
+                            } else {
+                                R.string.updating_library
+                            }
+                        } else {
+                            R.string.update_already_running
+                        }
+                        val result = snackbarHostState.showSnackbar(
+                            message = context.getString(msgRes),
+                            actionLabel = context.getString(R.string.action_cancel).takeIf { snackbar.started },
+                            withDismissAction = true,
+                        )
+                        if (result == SnackbarResult.ActionPerformed && snackbar.started) {
+                            screenModel.onLibraryUpdateCancelled()
+                        }
+                    }
+                }
             }
         }
 

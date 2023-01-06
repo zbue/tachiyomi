@@ -21,6 +21,7 @@ import eu.kanade.domain.category.interactor.UpdateCategory
 import eu.kanade.domain.category.repository.CategoryRepository
 import eu.kanade.domain.chapter.interactor.GetChapter
 import eu.kanade.domain.chapter.interactor.GetChapterByMangaId
+import eu.kanade.domain.chapter.interactor.SetBookmarkStatus
 import eu.kanade.domain.chapter.interactor.SetMangaDefaultChapterFlags
 import eu.kanade.domain.chapter.interactor.SetReadStatus
 import eu.kanade.domain.chapter.interactor.ShouldUpdateDbChapter
@@ -112,6 +113,7 @@ class DomainModule : InjektModule {
         addFactory { GetChapter(get()) }
         addFactory { GetChapterByMangaId(get()) }
         addFactory { UpdateChapter(get()) }
+        addFactory { SetBookmarkStatus(get()) }
         addFactory { SetReadStatus(get(), get(), get(), get()) }
         addFactory { ShouldUpdateDbChapter() }
         addFactory { SyncChaptersWithSource(get(), get(), get(), get()) }

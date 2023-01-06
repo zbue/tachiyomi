@@ -266,6 +266,7 @@ dependencies {
     implementation(libs.bundles.richtext)
     implementation(libs.aboutLibraries.compose)
     implementation(libs.cascade)
+    implementation(libs.swipe)
     implementation(libs.bundles.voyager)
     implementation(libs.wheelpicker)
     implementation(libs.materialmotion.core)

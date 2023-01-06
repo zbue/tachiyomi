@@ -1,5 +1,6 @@
 package eu.kanade.presentation.manga.components
 
+import androidx.annotation.StringRes
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -8,9 +9,10 @@ import androidx.compose.ui.res.stringResource
 import eu.kanade.tachiyomi.R
 
 @Composable
-fun DeleteChaptersDialog(
+fun ConfirmActionDialog(
     onDismissRequest: () -> Unit,
     onConfirm: () -> Unit,
+    @StringRes textRes: Int,
 ) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
@@ -33,7 +35,7 @@ fun DeleteChaptersDialog(
             Text(text = stringResource(R.string.are_you_sure))
         },
         text = {
-            Text(text = stringResource(R.string.confirm_delete_chapters))
+            Text(text = stringResource(textRes))
         },
     )
 }

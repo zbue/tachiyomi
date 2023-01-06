@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.library
 
+import android.app.Application
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -38,6 +39,7 @@ import eu.kanade.presentation.manga.DownloadAction
 import eu.kanade.tachiyomi.data.cache.CoverCache
 import eu.kanade.tachiyomi.data.download.DownloadCache
 import eu.kanade.tachiyomi.data.download.DownloadManager
+import eu.kanade.tachiyomi.data.library.LibraryUpdateService
 import eu.kanade.tachiyomi.data.track.TrackManager
 import eu.kanade.tachiyomi.source.SourceManager
 import eu.kanade.tachiyomi.source.model.SManga
@@ -48,6 +50,7 @@ import eu.kanade.tachiyomi.util.lang.launchNonCancellable
 import eu.kanade.tachiyomi.util.lang.withIOContext
 import eu.kanade.tachiyomi.util.removeCovers
 import eu.kanade.tachiyomi.widget.ExtendedNavigationView.Item.TriStateGroup
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -57,7 +60,9 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.text.Collator
@@ -88,6 +93,9 @@ class LibraryScreenModel(
 ) : StateScreenModel<LibraryScreenModel.State>(State()) {
 
     var activeCategoryIndex: Int by libraryPreferences.lastUsedCategory().asState(coroutineScope)
+
+    private val _snackbar: Channel<Snackbar> = Channel(Channel.CONFLATED)
+    val snackbar: Flow<Snackbar> = _snackbar.receiveAsFlow()
 
     init {
         coroutineScope.launchIO {
@@ -589,6 +597,26 @@ class LibraryScreenModel(
         }
     }
 
+    suspend fun showOpenRandomLibraryItemErrorSnackbar() {
+        _snackbar.send(Snackbar.OpenRandomLibraryItemError)
+    }
+
+    suspend fun showNoNextChapterFoundSnackbar() {
+        _snackbar.send(Snackbar.NoNextChapterFound)
+    }
+
+    fun onLibraryUpdateTriggered(category: Category?): Boolean {
+        val started = LibraryUpdateService.start(Injekt.get<Application>(), category)
+        coroutineScope.launch {
+            _snackbar.send(Snackbar.LibraryUpdateTriggered(started, category))
+        }
+        return started
+    }
+
+    fun onLibraryUpdateCancelled() {
+        LibraryUpdateService.stop(Injekt.get<Application>())
+    }
+
     fun clearSelection() {
         mutableState.update { it.copy(selection = emptyList()) }
     }
@@ -710,6 +738,12 @@ class LibraryScreenModel(
         data class ChangeCategory(val manga: List<Manga>, val initialSelection: List<CheckboxState<Category>>) : Dialog()
         data class DeleteManga(val manga: List<Manga>) : Dialog()
         data class DownloadCustomAmount(val manga: List<Manga>, val max: Int) : Dialog()
+    }
+
+    sealed class Snackbar {
+        data class LibraryUpdateTriggered(val started: Boolean, val category: Category?) : Snackbar()
+        object OpenRandomLibraryItemError : Snackbar()
+        object NoNextChapterFound : Snackbar()
     }
 
     @Immutable

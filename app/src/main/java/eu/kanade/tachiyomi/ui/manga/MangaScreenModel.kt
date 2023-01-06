@@ -2,7 +2,6 @@ package eu.kanade.tachiyomi.ui.manga
 
 import android.content.Context
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Immutable
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.coroutineScope
@@ -13,12 +12,11 @@ import eu.kanade.data.chapter.NoChaptersException
 import eu.kanade.domain.category.interactor.GetCategories
 import eu.kanade.domain.category.interactor.SetMangaCategories
 import eu.kanade.domain.category.model.Category
+import eu.kanade.domain.chapter.interactor.SetBookmarkStatus
 import eu.kanade.domain.chapter.interactor.SetMangaDefaultChapterFlags
 import eu.kanade.domain.chapter.interactor.SetReadStatus
 import eu.kanade.domain.chapter.interactor.SyncChaptersWithSource
-import eu.kanade.domain.chapter.interactor.UpdateChapter
 import eu.kanade.domain.chapter.model.Chapter
-import eu.kanade.domain.chapter.model.ChapterUpdate
 import eu.kanade.domain.download.service.DownloadPreferences
 import eu.kanade.domain.library.service.LibraryPreferences
 import eu.kanade.domain.manga.interactor.GetDuplicateLibraryManga
@@ -57,12 +55,15 @@ import eu.kanade.tachiyomi.util.shouldDownloadNewChapters
 import eu.kanade.tachiyomi.util.system.logcat
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -89,8 +90,8 @@ class MangaInfoScreenModel(
     private val getDuplicateLibraryManga: GetDuplicateLibraryManga = Injekt.get(),
     private val setMangaChapterFlags: SetMangaChapterFlags = Injekt.get(),
     private val setMangaDefaultChapterFlags: SetMangaDefaultChapterFlags = Injekt.get(),
+    private val setBookmarkStatus: SetBookmarkStatus = Injekt.get(),
     private val setReadStatus: SetReadStatus = Injekt.get(),
-    private val updateChapter: UpdateChapter = Injekt.get(),
     private val updateManga: UpdateManga = Injekt.get(),
     private val syncChaptersWithSource: SyncChaptersWithSource = Injekt.get(),
     private val getCategories: GetCategories = Injekt.get(),
@@ -118,6 +119,9 @@ class MangaInfoScreenModel(
 
     private val selectedPositions: Array<Int> = arrayOf(-1, -1) // first and last selected index in list
     private val selectedChapterIds: HashSet<Long> = HashSet()
+
+    private val _snackbar: Channel<Snackbar> = Channel(Channel.CONFLATED)
+    val snackbar: Flow<Snackbar> = _snackbar.receiveAsFlow()
 
     /**
      * Helper function to update the UI state only if it's currently in success state
@@ -225,7 +229,7 @@ class MangaInfoScreenModel(
 
             logcat(LogPriority.ERROR, e)
             coroutineScope.launch {
-                snackbarHostState.showSnackbar(message = e.toString())
+                _snackbar.send(Snackbar.InternalError(e.toString()))
             }
         }
     }
@@ -235,14 +239,7 @@ class MangaInfoScreenModel(
             onRemoved = {
                 coroutineScope.launch {
                     if (!hasDownloads()) return@launch
-                    val result = snackbarHostState.showSnackbar(
-                        message = context.getString(R.string.delete_downloads_for_manga),
-                        actionLabel = context.getString(R.string.action_delete),
-                        withDismissAction = true,
-                    )
-                    if (result == SnackbarResult.ActionPerformed) {
-                        deleteDownloads()
-                    }
+                    _snackbar.send(Snackbar.DeleteDownloadedChapters)
                 }
             },
         )
@@ -362,7 +359,7 @@ class MangaInfoScreenModel(
     /**
      * Deletes all the downloads for the manga.
      */
-    private fun deleteDownloads() {
+    fun deleteDownloads() {
         val state = successState ?: return
         downloadManager.deleteManga(state.manga, state.source)
     }
@@ -547,7 +544,7 @@ class MangaInfoScreenModel(
             }
 
             coroutineScope.launch {
-                snackbarHostState.showSnackbar(message = message)
+                _snackbar.send(Snackbar.FetchChaptersFromSourceError(message))
             }
         }
     }
@@ -586,14 +583,7 @@ class MangaInfoScreenModel(
         }
         if (!isFavoritedManga) {
             coroutineScope.launch {
-                val result = snackbarHostState.showSnackbar(
-                    message = context.getString(R.string.snack_add_to_library),
-                    actionLabel = context.getString(R.string.action_add),
-                    withDismissAction = true,
-                )
-                if (result == SnackbarResult.ActionPerformed && !isFavoritedManga) {
-                    toggleFavorite()
-                }
+                _snackbar.send(Snackbar.AddToLibrary(isFavoritedManga))
             }
         }
     }
@@ -651,22 +641,46 @@ class MangaInfoScreenModel(
         val chapters = processedChapters.orEmpty().map { it.chapter }.toList()
         val prevChapters = if (successState.manga.sortDescending()) chapters.asReversed() else chapters
         val pointerPos = prevChapters.indexOf(pointer)
-        if (pointerPos != -1) markChaptersRead(prevChapters.take(pointerPos), true)
+        if (pointerPos != -1) markChaptersRead(prevChapters.take(pointerPos), markAsRead = true, isFinalized = true, action = {})
     }
 
     /**
      * Mark the selected chapter list as read/unread.
      * @param chapters the list of selected chapters.
-     * @param read whether to mark chapters as read or unread.
+     * @param markAsRead whether to mark chapters as read or unread.
      */
-    fun markChaptersRead(chapters: List<Chapter>, read: Boolean) {
+    fun markChaptersRead(
+        chapters: List<Chapter>,
+        markAsRead: Boolean,
+        lastPageRead: Long? = null,
+        isFinalized: Boolean = false,
+        action: () -> Unit,
+    ) {
         coroutineScope.launchIO {
             setReadStatus.await(
-                read = read,
+                read = markAsRead,
+                showSnackbar = !isFinalized,
+                lastPageRead = lastPageRead ?: 0,
                 chapters = chapters.toTypedArray(),
             )
+            withUIContext { action() }
         }
-        toggleAllSelection(false)
+    }
+
+    fun swipeToMarkChapterRead(chapter: Chapter, markAsRead: Boolean, lastPageRead: Long, showSnackbar: Boolean = true) {
+        markChaptersRead(
+            chapters = listOf(chapter),
+            markAsRead = markAsRead,
+            lastPageRead = lastPageRead,
+            isFinalized = !showSnackbar,
+            action = {
+                if (showSnackbar) {
+                    coroutineScope.launch {
+                        _snackbar.send(Snackbar.SwipeToMarkChapterRead(chapter, markAsRead, lastPageRead))
+                    }
+                }
+            },
+        )
     }
 
     /**
@@ -683,14 +697,28 @@ class MangaInfoScreenModel(
      * Bookmarks the given list of chapters.
      * @param chapters the list of chapters to bookmark.
      */
-    fun bookmarkChapters(chapters: List<Chapter>, bookmarked: Boolean) {
+    fun bookmarkChapters(chapters: List<Chapter>, bookmarked: Boolean, action: () -> Unit) {
         coroutineScope.launchIO {
-            chapters
-                .filterNot { it.bookmark == bookmarked }
-                .map { ChapterUpdate(id = it.id, bookmark = bookmarked) }
-                .let { updateChapter.awaitAll(it) }
+            setBookmarkStatus.awaitAll(
+                bookmark = bookmarked,
+                chapters = chapters.toTypedArray(),
+            )
+            withUIContext { action() }
         }
-        toggleAllSelection(false)
+    }
+
+    fun swipeToBookmarkChapter(chapter: Chapter, bookmarked: Boolean, showSnackbar: Boolean = true) {
+        bookmarkChapters(
+            chapters = listOf(chapter),
+            bookmarked = bookmarked,
+            action = {
+                if (showSnackbar) {
+                    coroutineScope.launch {
+                        _snackbar.send(Snackbar.SwipeToBookmarkChapter(chapter, bookmarked))
+                    }
+                }
+            },
+        )
     }
 
     /**
@@ -807,7 +835,7 @@ class MangaInfoScreenModel(
             if (applyToExisting) {
                 setMangaDefaultChapterFlags.awaitAll()
             }
-            snackbarHostState.showSnackbar(message = context.getString(R.string.chapter_settings_updated))
+            _snackbar.send(Snackbar.UpdateDefaultChapterSettings)
         }
     }
 
@@ -932,12 +960,25 @@ class MangaInfoScreenModel(
 
     sealed class Dialog {
         data class ChangeCategory(val manga: Manga, val initialSelection: List<CheckboxState<Category>>) : Dialog()
+        data class BookmarkChapters(val chapters: List<Chapter>, val bookmarked: Boolean) : Dialog()
+        data class MarkChaptersRead(val chapters: List<Chapter>, val markAsRead: Boolean) : Dialog()
+        data class MarkPreviousChapterReadDialog(val pointer: Chapter) : Dialog()
         data class DeleteChapters(val chapters: List<Chapter>) : Dialog()
         data class DuplicateManga(val manga: Manga, val duplicate: Manga) : Dialog()
         data class DownloadCustomAmount(val max: Int) : Dialog()
         object SettingsSheet : Dialog()
         object TrackSheet : Dialog()
         object FullCover : Dialog()
+    }
+
+    sealed class Snackbar {
+        data class InternalError(val error: String) : Snackbar()
+        data class FetchChaptersFromSourceError(val error: String) : Snackbar()
+        data class SwipeToMarkChapterRead(val chapter: Chapter, val markAsRead: Boolean, val lastPageRead: Long) : Snackbar()
+        data class SwipeToBookmarkChapter(val chapter: Chapter, val bookmarked: Boolean) : Snackbar()
+        data class AddToLibrary(val isFavoritedManga: Boolean) : Snackbar()
+        object DeleteDownloadedChapters : Snackbar()
+        object UpdateDefaultChapterSettings : Snackbar()
     }
 
     fun dismissDialog() {
@@ -955,6 +996,33 @@ class MangaInfoScreenModel(
             when (state) {
                 MangaScreenState.Loading -> state
                 is MangaScreenState.Success -> state.copy(dialog = Dialog.DownloadCustomAmount(max))
+            }
+        }
+    }
+
+    fun showBookmarkChaptersDialog(chapters: List<Chapter>, bookmarked: Boolean) {
+        mutableState.update { state ->
+            when (state) {
+                MangaScreenState.Loading -> state
+                is MangaScreenState.Success -> state.copy(dialog = Dialog.BookmarkChapters(chapters, bookmarked))
+            }
+        }
+    }
+
+    fun showMarkChaptersReadDialog(chapters: List<Chapter>, markAsRead: Boolean) {
+        mutableState.update { state ->
+            when (state) {
+                MangaScreenState.Loading -> state
+                is MangaScreenState.Success -> state.copy(dialog = Dialog.MarkChaptersRead(chapters, markAsRead))
+            }
+        }
+    }
+
+    fun showMarkPreviousChapterReadDialog(pointer: Chapter) {
+        mutableState.update { state ->
+            when (state) {
+                MangaScreenState.Loading -> state
+                is MangaScreenState.Success -> state.copy(dialog = Dialog.MarkPreviousChapterReadDialog(pointer))
             }
         }
     }

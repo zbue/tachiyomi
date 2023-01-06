@@ -5,6 +5,8 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -29,10 +31,11 @@ import eu.kanade.presentation.components.ChangeCategoryDialog
 import eu.kanade.presentation.components.DuplicateMangaDialog
 import eu.kanade.presentation.components.LoadingScreen
 import eu.kanade.presentation.components.NavigatorAdaptiveSheet
+import eu.kanade.presentation.components.showSnack
 import eu.kanade.presentation.manga.ChapterSettingsDialog
 import eu.kanade.presentation.manga.EditCoverAction
 import eu.kanade.presentation.manga.MangaScreen
-import eu.kanade.presentation.manga.components.DeleteChaptersDialog
+import eu.kanade.presentation.manga.components.ConfirmActionDialog
 import eu.kanade.presentation.manga.components.DownloadCustomAmountDialog
 import eu.kanade.presentation.manga.components.MangaCoverDialog
 import eu.kanade.presentation.util.AssistContentScreen
@@ -54,6 +57,7 @@ import eu.kanade.tachiyomi.util.system.copyToClipboard
 import eu.kanade.tachiyomi.util.system.logcat
 import eu.kanade.tachiyomi.util.system.toShareIntent
 import eu.kanade.tachiyomi.util.system.toast
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import logcat.LogPriority
 
@@ -122,14 +126,78 @@ class MangaScreen(
             onDownloadActionClicked = screenModel::runDownloadAction.takeIf { !successState.source.isLocalOrStub() },
             onEditCategoryClicked = screenModel::promptChangeCategories.takeIf { successState.manga.favorite },
             onMigrateClicked = { navigator.push(MigrateSearchScreen(successState.manga.id)) }.takeIf { successState.manga.favorite },
-            onMultiBookmarkClicked = screenModel::bookmarkChapters,
-            onMultiMarkAsReadClicked = screenModel::markChaptersRead,
-            onMarkPreviousAsReadClicked = screenModel::markPreviousChapterRead,
+            onMultiBookmarkClicked = screenModel::showBookmarkChaptersDialog,
+            onMultiMarkAsReadClicked = screenModel::showMarkChaptersReadDialog,
+            onMarkPreviousAsReadClicked = screenModel::showMarkPreviousChapterReadDialog,
             onMultiDeleteClicked = screenModel::showDeleteChapterDialog,
             onChapterSelected = screenModel::toggleSelection,
             onAllChapterSelected = screenModel::toggleAllSelection,
             onInvertSelection = screenModel::invertSelection,
+            onSwipeToBookmarkChapter = screenModel::swipeToBookmarkChapter,
+            onSwipeToMarkChapterRead = screenModel::swipeToMarkChapterRead,
         )
+
+        LaunchedEffect(Unit) {
+            screenModel.snackbar.collectLatest { snackbar ->
+                when (snackbar) {
+                    is MangaInfoScreenModel.Snackbar.InternalError -> {
+                        screenModel.snackbarHostState.showSnack(snackbar.error)
+                    }
+                    is MangaInfoScreenModel.Snackbar.SwipeToBookmarkChapter -> {
+                        val msgRes = if (snackbar.bookmarked) R.string.action_bookmark else R.string.action_remove_bookmark
+                        val result = screenModel.snackbarHostState.showSnack(
+                            message = context.getString(msgRes),
+                            actionLabel = context.getString(R.string.action_undo),
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            screenModel.swipeToBookmarkChapter(snackbar.chapter, !snackbar.bookmarked, false)
+                        }
+                    }
+                    is MangaInfoScreenModel.Snackbar.SwipeToMarkChapterRead -> {
+                        val msgRes = if (snackbar.markAsRead) R.string.action_mark_as_read else R.string.action_mark_as_unread
+                        val result = screenModel.snackbarHostState.showSnack(
+                            message = context.getString(msgRes),
+                            actionLabel = context.getString(R.string.action_undo),
+                        )
+
+                        when (result) {
+                            SnackbarResult.ActionPerformed -> {
+                                screenModel.swipeToMarkChapterRead(snackbar.chapter, !snackbar.markAsRead, snackbar.lastPageRead, showSnackbar = false)
+                            }
+                            SnackbarResult.Dismissed -> {
+                                screenModel.swipeToMarkChapterRead(snackbar.chapter, snackbar.markAsRead, snackbar.lastPageRead, showSnackbar = false)
+                            }
+                        }
+                    }
+                    is MangaInfoScreenModel.Snackbar.FetchChaptersFromSourceError -> {
+                        screenModel.snackbarHostState.showSnack(snackbar.error)
+                    }
+                    is MangaInfoScreenModel.Snackbar.AddToLibrary -> {
+                        val result = screenModel.snackbarHostState.showSnack(
+                            message = context.getString(R.string.snack_add_to_library),
+                            actionLabel = context.getString(R.string.action_add),
+                            duration = SnackbarDuration.Indefinite,
+                        )
+                        if (result == SnackbarResult.ActionPerformed && !snackbar.isFavoritedManga) {
+                            screenModel.toggleFavorite()
+                        }
+                    }
+                    MangaInfoScreenModel.Snackbar.DeleteDownloadedChapters -> {
+                        val result = screenModel.snackbarHostState.showSnack(
+                            message = context.getString(R.string.delete_downloads_for_manga),
+                            actionLabel = context.getString(R.string.action_delete),
+                            duration = SnackbarDuration.Indefinite,
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            screenModel.deleteDownloads()
+                        }
+                    }
+                    MangaInfoScreenModel.Snackbar.UpdateDefaultChapterSettings -> {
+                        screenModel.snackbarHostState.showSnack(context.getString(R.string.chapter_settings_updated))
+                    }
+                }
+            }
+        }
 
         val onDismissRequest = { screenModel.dismissDialog() }
         when (val dialog = (state as? MangaScreenState.Success)?.dialog) {
@@ -144,13 +212,44 @@ class MangaScreen(
                     },
                 )
             }
+            is MangaInfoScreenModel.Dialog.BookmarkChapters -> {
+                ConfirmActionDialog(
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = {
+                        screenModel.toggleAllSelection(false)
+                        screenModel.bookmarkChapters(dialog.chapters, dialog.bookmarked, action = {})
+                    },
+                    textRes = R.string.confirm_delete_chapters,
+                )
+            }
+            is MangaInfoScreenModel.Dialog.MarkChaptersRead -> {
+                ConfirmActionDialog(
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = {
+                        screenModel.toggleAllSelection(false)
+                        screenModel.markChaptersRead(dialog.chapters, dialog.markAsRead, isFinalized = dialog.markAsRead, action = {})
+                    },
+                    textRes = R.string.confirm_delete_chapters,
+                )
+            }
+            is MangaInfoScreenModel.Dialog.MarkPreviousChapterReadDialog -> {
+                ConfirmActionDialog(
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = {
+                        screenModel.toggleAllSelection(false)
+                        screenModel.markPreviousChapterRead(dialog.pointer)
+                    },
+                    textRes = R.string.confirm_delete_chapters,
+                )
+            }
             is MangaInfoScreenModel.Dialog.DeleteChapters -> {
-                DeleteChaptersDialog(
+                ConfirmActionDialog(
                     onDismissRequest = onDismissRequest,
                     onConfirm = {
                         screenModel.toggleAllSelection(false)
                         screenModel.deleteChapters(dialog.chapters)
                     },
+                    textRes = R.string.confirm_delete_chapters,
                 )
             }
             is MangaInfoScreenModel.Dialog.DownloadCustomAmount -> {
@@ -209,11 +308,32 @@ class MangaScreen(
                         onEditClick = {
                             when (it) {
                                 EditCoverAction.EDIT -> getContent.launch("image/*")
-                                EditCoverAction.DELETE -> sm.deleteCustomCover(context)
+                                EditCoverAction.DELETE -> sm.deleteCustomCover()
                             }
                         },
                         onDismissRequest = onDismissRequest,
                     )
+                    LaunchedEffect(Unit) {
+                        sm.snackbar.collectLatest { snackbar ->
+                            when (snackbar) {
+                                MangaCoverScreenModel.Snackbar.CoverSaved -> {
+                                    sm.snackbarHostState.showSnack(context.getString(R.string.cover_saved))
+                                }
+                                MangaCoverScreenModel.Snackbar.SaveCoverError -> {
+                                    sm.snackbarHostState.showSnack(context.getString(R.string.error_saving_cover))
+                                }
+                                MangaCoverScreenModel.Snackbar.ShareCoverError -> {
+                                    sm.snackbarHostState.showSnack(context.getString(R.string.error_sharing_cover))
+                                }
+                                MangaCoverScreenModel.Snackbar.CoverUpdated -> {
+                                    sm.snackbarHostState.showSnack(context.getString(R.string.cover_updated))
+                                }
+                                MangaCoverScreenModel.Snackbar.UpdateCoverFailed -> {
+                                    sm.snackbarHostState.showSnack(context.getString(R.string.notification_cover_update_failed))
+                                }
+                            }
+                        }
+                    }
                 } else {
                     LoadingScreen(Modifier.systemBarsPadding())
                 }
