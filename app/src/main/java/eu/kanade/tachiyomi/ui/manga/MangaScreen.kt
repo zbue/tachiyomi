@@ -26,13 +26,13 @@ import eu.kanade.domain.chapter.model.Chapter
 import eu.kanade.domain.manga.model.Manga
 import eu.kanade.domain.manga.model.hasCustomCover
 import eu.kanade.presentation.components.ChangeCategoryDialog
+import eu.kanade.presentation.components.ConfirmActionDialog
 import eu.kanade.presentation.components.DuplicateMangaDialog
 import eu.kanade.presentation.components.LoadingScreen
 import eu.kanade.presentation.components.NavigatorAdaptiveSheet
-import eu.kanade.presentation.manga.ChapterSettingsDialog
 import eu.kanade.presentation.manga.EditCoverAction
 import eu.kanade.presentation.manga.MangaScreen
-import eu.kanade.presentation.manga.components.DeleteChaptersDialog
+import eu.kanade.presentation.manga.components.ChapterSettingsDialog
 import eu.kanade.presentation.manga.components.DownloadCustomAmountDialog
 import eu.kanade.presentation.manga.components.MangaCoverDialog
 import eu.kanade.presentation.util.AssistContentScreen
@@ -122,9 +122,9 @@ class MangaScreen(
             onDownloadActionClicked = screenModel::runDownloadAction.takeIf { !successState.source.isLocalOrStub() },
             onEditCategoryClicked = screenModel::promptChangeCategories.takeIf { successState.manga.favorite },
             onMigrateClicked = { navigator.push(MigrateSearchScreen(successState.manga.id)) }.takeIf { successState.manga.favorite },
-            onMultiBookmarkClicked = screenModel::bookmarkChapters,
-            onMultiMarkAsReadClicked = screenModel::markChaptersRead,
-            onMarkPreviousAsReadClicked = screenModel::markPreviousChapterRead,
+            onMultiBookmarkClicked = screenModel::showBookmarkChaptersDialog,
+            onMultiMarkAsReadClicked = screenModel::showMarkChaptersReadDialog,
+            onMarkPreviousAsReadClicked = screenModel::showMarkPreviousChapterReadDialog,
             onMultiDeleteClicked = screenModel::showDeleteChapterDialog,
             onChapterSelected = screenModel::toggleSelection,
             onAllChapterSelected = screenModel::toggleAllSelection,
@@ -132,7 +132,7 @@ class MangaScreen(
         )
 
         val onDismissRequest = { screenModel.dismissDialog() }
-        when (val dialog = (state as? MangaScreenState.Success)?.dialog) {
+        when (val dialog = successState.dialog) {
             null -> {}
             is MangaInfoScreenModel.Dialog.ChangeCategory -> {
                 ChangeCategoryDialog(
@@ -144,13 +144,45 @@ class MangaScreen(
                     },
                 )
             }
+            is MangaInfoScreenModel.Dialog.BookmarkChapters -> {
+                val dialogTextRes = if (dialog.bookmarked) R.string.confirm_bookmark_chapters else R.string.confirm_remove_bookmark_chapters
+                val confirmTextRes = if (dialog.bookmarked) R.string.action_bookmark_plain else R.string.action_remove_bookmark_plain
+
+                ConfirmActionDialog(
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = { screenModel.bookmarkChapters(dialog.chapters, dialog.bookmarked) },
+                    dialogText = context.getString(dialogTextRes),
+                    confirmText = context.getString(confirmTextRes),
+                )
+            }
+            is MangaInfoScreenModel.Dialog.MarkChaptersRead -> {
+                val dialogTextRes = if (dialog.markAsRead) R.string.confirm_mark_as_read_chapters else R.string.confirm_mark_as_unread_chapters
+                val confirmTextRes = if (dialog.markAsRead) R.string.action_mark_as_read else R.string.action_mark_as_unread
+
+                ConfirmActionDialog(
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = { screenModel.markChaptersRead(dialog.chapters, dialog.markAsRead) },
+                    dialogText = context.getString(dialogTextRes),
+                    confirmText = context.getString(confirmTextRes),
+                )
+            }
+            is MangaInfoScreenModel.Dialog.MarkPreviousChapterRead -> {
+                ConfirmActionDialog(
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = { screenModel.markPreviousChapterRead(dialog.pointer) },
+                    dialogText = context.getString(R.string.confirm_mark_previous_as_read_chapters, dialog.pointer.name),
+                    confirmText = context.getString(R.string.action_mark_previous_as_read),
+                )
+            }
             is MangaInfoScreenModel.Dialog.DeleteChapters -> {
-                DeleteChaptersDialog(
+                ConfirmActionDialog(
                     onDismissRequest = onDismissRequest,
                     onConfirm = {
                         screenModel.toggleAllSelection(false)
-                        screenModel.deleteChapters(dialog.chapters)
+                        screenModel.deleteChapters(dialog.chaptersToDelete)
                     },
+                    dialogText = context.getString(R.string.confirm_delete_chapters),
+                    confirmText = context.getString(R.string.action_delete),
                 )
             }
             is MangaInfoScreenModel.Dialog.DownloadCustomAmount -> {
@@ -165,22 +197,26 @@ class MangaScreen(
                     },
                 )
             }
-            is MangaInfoScreenModel.Dialog.DuplicateManga -> DuplicateMangaDialog(
-                onDismissRequest = onDismissRequest,
-                onConfirm = { screenModel.toggleFavorite(onRemoved = {}, checkDuplicate = false) },
-                onOpenManga = { navigator.push(MangaScreen(dialog.duplicate.id)) },
-                duplicateFrom = screenModel.getSourceOrStub(dialog.duplicate),
-            )
-            MangaInfoScreenModel.Dialog.SettingsSheet -> ChapterSettingsDialog(
-                onDismissRequest = onDismissRequest,
-                manga = successState.manga,
-                onDownloadFilterChanged = screenModel::setDownloadedFilter,
-                onUnreadFilterChanged = screenModel::setUnreadFilter,
-                onBookmarkedFilterChanged = screenModel::setBookmarkedFilter,
-                onSortModeChanged = screenModel::setSorting,
-                onDisplayModeChanged = screenModel::setDisplayMode,
-                onSetAsDefault = screenModel::setCurrentSettingsAsDefault,
-            )
+            is MangaInfoScreenModel.Dialog.DuplicateManga -> {
+                DuplicateMangaDialog(
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = { screenModel.toggleFavorite(onRemoved = {}, checkDuplicate = false) },
+                    onOpenManga = { navigator.push(MangaScreen(dialog.duplicate.id)) },
+                    duplicateFrom = screenModel.getSourceOrStub(dialog.duplicate),
+                )
+            }
+            MangaInfoScreenModel.Dialog.SettingsSheet -> {
+                ChapterSettingsDialog(
+                    onDismissRequest = onDismissRequest,
+                    manga = successState.manga,
+                    onDownloadFilterChanged = screenModel::setDownloadedFilter,
+                    onUnreadFilterChanged = screenModel::setUnreadFilter,
+                    onBookmarkedFilterChanged = screenModel::setBookmarkedFilter,
+                    onSortModeChanged = screenModel::setSorting,
+                    onDisplayModeChanged = screenModel::setDisplayMode,
+                    onSetAsDefault = screenModel::setCurrentSettingsAsDefault,
+                )
+            }
             MangaInfoScreenModel.Dialog.TrackSheet -> {
                 NavigatorAdaptiveSheet(
                     screen = TrackInfoDialogHomeScreen(

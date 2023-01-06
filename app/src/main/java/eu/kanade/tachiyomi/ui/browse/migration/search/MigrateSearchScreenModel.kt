@@ -68,15 +68,17 @@ class MigrateSearchScreenModel(
         return mutableState.value.items
     }
 
-    fun setDialog(dialog: MigrateSearchDialog?) {
-        mutableState.update {
-            it.copy(dialog = dialog)
-        }
+    fun dismissDialog() {
+        mutableState.update { it.copy(dialog = null) }
     }
-}
 
-sealed class MigrateSearchDialog {
-    data class Migrate(val manga: Manga) : MigrateSearchDialog()
+    fun showMigrateDialog(manga: Manga) {
+        mutableState.update { it.copy(dialog = Dialog.Migrate(manga)) }
+    }
+
+    sealed class Dialog {
+        data class Migrate(val manga: Manga) : Dialog()
+    }
 }
 
 @Immutable
@@ -84,7 +86,7 @@ data class MigrateSearchState(
     val manga: Manga? = null,
     val searchQuery: String? = null,
     val items: Map<CatalogueSource, SearchItemResult> = emptyMap(),
-    val dialog: MigrateSearchDialog? = null,
+    val dialog: MigrateSearchScreenModel.Dialog? = null,
 ) {
 
     val progress: Int = items.count { it.value !is SearchItemResult.Loading }

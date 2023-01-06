@@ -203,12 +203,12 @@ class UpdatesScreenModel(
     /**
      * Mark the selected updates list as read/unread.
      * @param updates the list of selected updates.
-     * @param read whether to mark chapters as read or unread.
+     * @param markAsRead whether to mark chapters as read or unread.
      */
-    fun markUpdatesRead(updates: List<UpdatesItem>, read: Boolean) {
+    fun markUpdatesRead(updates: List<UpdatesItem>, markAsRead: Boolean) {
         coroutineScope.launchIO {
             setReadStatus.await(
-                read = read,
+                read = markAsRead,
                 chapters = updates
                     .mapNotNull { getChapter.await(it.update.chapterId) }
                     .toTypedArray(),
@@ -221,11 +221,11 @@ class UpdatesScreenModel(
      * Bookmarks the given list of chapters.
      * @param updates the list of chapters to bookmark.
      */
-    fun bookmarkUpdates(updates: List<UpdatesItem>, bookmark: Boolean) {
+    fun bookmarkUpdates(updates: List<UpdatesItem>, bookmarked: Boolean) {
         coroutineScope.launchIO {
             updates
-                .filterNot { it.update.bookmark == bookmark }
-                .map { ChapterUpdate(id = it.update.chapterId, bookmark = bookmark) }
+                .filterNot { it.update.bookmark == bookmarked }
+                .map { ChapterUpdate(id = it.update.chapterId, bookmark = bookmarked) }
                 .let { updateChapter.awaitAll(it) }
         }
         toggleAllSelection(false)
@@ -267,10 +267,6 @@ class UpdatesScreenModel(
                 }
         }
         toggleAllSelection(false)
-    }
-
-    fun showConfirmDeleteChapters(updatesItem: List<UpdatesItem>) {
-        setDialog(Dialog.DeleteConfirmation(updatesItem))
     }
 
     fun toggleSelection(
@@ -362,8 +358,20 @@ class UpdatesScreenModel(
         selectedPositions[1] = -1
     }
 
-    fun setDialog(dialog: Dialog?) {
-        mutableState.update { it.copy(dialog = dialog) }
+    fun dismissDialog() {
+        mutableState.update { it.copy(dialog = null) }
+    }
+
+    fun showConfirmDeleteChapters(updatesItem: List<UpdatesItem>) {
+        mutableState.update { it.copy(dialog = Dialog.DeleteChapter(updatesItem)) }
+    }
+
+    fun showBookmarkUpdatesDialog(updatesItem: List<UpdatesItem>, bookmarked: Boolean) {
+        mutableState.update { it.copy(dialog = Dialog.BookmarkUpdates(updatesItem, bookmarked)) }
+    }
+
+    fun showMarkUpdatesReadDialog(updatesItem: List<UpdatesItem>, markAsRead: Boolean) {
+        mutableState.update { it.copy(dialog = Dialog.MarkUpdatesRead(updatesItem, markAsRead)) }
     }
 
     fun resetNewUpdatesCount() {
@@ -371,7 +379,9 @@ class UpdatesScreenModel(
     }
 
     sealed class Dialog {
-        data class DeleteConfirmation(val toDelete: List<UpdatesItem>) : Dialog()
+        data class BookmarkUpdates(val updates: List<UpdatesItem>, val bookmarked: Boolean) : Dialog()
+        data class MarkUpdatesRead(val updates: List<UpdatesItem>, val markAsRead: Boolean) : Dialog()
+        data class DeleteChapter(val updatesToDelete: List<UpdatesItem>) : Dialog()
     }
 
     sealed class Event {

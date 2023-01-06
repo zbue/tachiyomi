@@ -39,41 +39,43 @@ class CategoryScreen : Screen {
 
         CategoryScreen(
             state = successState,
-            onClickCreate = { screenModel.showDialog(CategoryDialog.Create) },
-            onClickRename = { screenModel.showDialog(CategoryDialog.Rename(it)) },
-            onClickDelete = { screenModel.showDialog(CategoryDialog.Delete(it)) },
+            onClickCreate = screenModel::showCreateCategoryDialog,
+            onClickRename = screenModel::showRenameCategoryDialog,
+            onClickDelete = screenModel::showDeleteCategoryDialog,
             onClickMoveUp = screenModel::moveUp,
             onClickMoveDown = screenModel::moveDown,
             navigateUp = navigator::pop,
         )
 
+        val onDismissRequest = { screenModel.dismissDialog() }
         when (val dialog = successState.dialog) {
             null -> {}
-            CategoryDialog.Create -> {
+            CategoryScreenModel.Dialog.CreateCategory -> {
                 CategoryCreateDialog(
-                    onDismissRequest = screenModel::dismissDialog,
-                    onCreate = { screenModel.createCategory(it) },
+                    onDismissRequest = onDismissRequest,
+                    onCreate = screenModel::createCategory,
+                    categories = successState.categories,
                 )
             }
-            is CategoryDialog.Rename -> {
+            is CategoryScreenModel.Dialog.RenameCategory -> {
                 CategoryRenameDialog(
-                    onDismissRequest = screenModel::dismissDialog,
-                    onRename = { screenModel.renameCategory(dialog.category, it) },
-                    category = dialog.category,
+                    onDismissRequest = onDismissRequest,
+                    onRename = { screenModel.renameCategory(dialog.categoryToRename, it) },
+                    category = dialog.categoryToRename,
                 )
             }
-            is CategoryDialog.Delete -> {
+            is CategoryScreenModel.Dialog.DeleteCategory -> {
                 CategoryDeleteDialog(
-                    onDismissRequest = screenModel::dismissDialog,
-                    onDelete = { screenModel.deleteCategory(dialog.category.id) },
-                    category = dialog.category,
+                    onDismissRequest = onDismissRequest,
+                    onDelete = { screenModel.deleteCategory(dialog.categoryToDelete.id) },
+                    category = dialog.categoryToDelete,
                 )
             }
         }
 
         LaunchedEffect(Unit) {
             screenModel.events.collectLatest { event ->
-                if (event is CategoryEvent.LocalizedMessage) {
+                if (event is CategoryScreenModel.CategoryEvent.LocalizedMessage) {
                     context.toast(event.stringRes)
                 }
             }

@@ -315,7 +315,10 @@ object SettingsLibraryScreen : SearchableSettings {
                 }
             },
             confirmButton = {
-                TextButton(onClick = { onValueChanged(portraitValue, landscapeValue) }) {
+                TextButton(
+                    enabled = portraitValue != initialPortrait || landscapeValue != initialLandscape,
+                    onClick = { onValueChanged(portraitValue, landscapeValue) },
+                ) {
                     Text(text = stringResource(android.R.string.ok))
                 }
             },
@@ -335,7 +338,7 @@ object SettingsLibraryScreen : SearchableSettings {
             contentAlignment = Alignment.Center,
         ) {
             Surface(
-                modifier = Modifier.size(maxWidth, maxHeight / 3),
+                modifier = Modifier.size(maxWidth, 128.dp / 3),
                 shape = MaterialTheme.shapes.large,
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),

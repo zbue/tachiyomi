@@ -16,8 +16,8 @@ import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
+import eu.kanade.presentation.components.ConfirmActionDialog
 import eu.kanade.presentation.updates.UpdateScreen
-import eu.kanade.presentation.updates.UpdatesDeleteConfirmationDialog
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
@@ -63,8 +63,8 @@ object UpdatesTab : Tab {
             onInvertSelection = screenModel::invertSelection,
             onUpdateLibrary = screenModel::updateLibrary,
             onDownloadChapter = screenModel::downloadChapters,
-            onMultiBookmarkClicked = screenModel::bookmarkUpdates,
-            onMultiMarkAsReadClicked = screenModel::markUpdatesRead,
+            onMultiBookmarkClicked = screenModel::showBookmarkUpdatesDialog,
+            onMultiMarkAsReadClicked = screenModel::showMarkUpdatesReadDialog,
             onMultiDeleteClicked = screenModel::showConfirmDeleteChapters,
             onUpdateSelected = screenModel::toggleSelection,
             onOpenChapter = {
@@ -73,12 +73,36 @@ object UpdatesTab : Tab {
             },
         )
 
-        val onDismissDialog = { screenModel.setDialog(null) }
+        val onDismissRequest = { screenModel.dismissDialog() }
         when (val dialog = state.dialog) {
-            is UpdatesScreenModel.Dialog.DeleteConfirmation -> {
-                UpdatesDeleteConfirmationDialog(
-                    onDismissRequest = onDismissDialog,
-                    onConfirm = { screenModel.deleteChapters(dialog.toDelete) },
+            is UpdatesScreenModel.Dialog.BookmarkUpdates -> {
+                val dialogTextRes = if (dialog.bookmarked) R.string.confirm_bookmark_chapters else R.string.confirm_remove_bookmark_chapters
+                val confirmTextRes = if (dialog.bookmarked) R.string.action_bookmark_plain else R.string.action_remove_bookmark_plain
+
+                ConfirmActionDialog(
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = { screenModel.bookmarkUpdates(dialog.updates, dialog.bookmarked) },
+                    dialogText = context.getString(dialogTextRes),
+                    confirmText = context.getString(confirmTextRes),
+                )
+            }
+            is UpdatesScreenModel.Dialog.MarkUpdatesRead -> {
+                val dialogTextRes = if (dialog.markAsRead) R.string.confirm_mark_as_read_chapters else R.string.confirm_mark_as_unread_chapters
+                val confirmTextRes = if (dialog.markAsRead) R.string.action_mark_as_read else R.string.action_mark_as_unread
+
+                ConfirmActionDialog(
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = { screenModel.markUpdatesRead(dialog.updates, dialog.markAsRead) },
+                    dialogText = context.getString(dialogTextRes),
+                    confirmText = context.getString(confirmTextRes),
+                )
+            }
+            is UpdatesScreenModel.Dialog.DeleteChapter -> {
+                ConfirmActionDialog(
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = { screenModel.deleteChapters(dialog.updatesToDelete) },
+                    dialogText = context.getString(R.string.confirm_delete_chapters),
+                    confirmText = context.getString(R.string.action_delete),
                 )
             }
             null -> {}

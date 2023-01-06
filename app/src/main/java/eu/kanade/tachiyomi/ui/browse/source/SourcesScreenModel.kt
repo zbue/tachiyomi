@@ -95,12 +95,12 @@ class SourcesScreenModel(
         toggleSourcePin.await(source)
     }
 
-    fun showSourceDialog(source: Source) {
-        mutableState.update { it.copy(dialog = Dialog(source)) }
+    fun dismissDialog() {
+        mutableState.update { it.copy(dialog = null) }
     }
 
-    fun closeDialog() {
-        mutableState.update { it.copy(dialog = null) }
+    fun showSourceDialog(source: Source) {
+        mutableState.update { it.copy(dialog = Dialog(source)) }
     }
 
     sealed class Event {

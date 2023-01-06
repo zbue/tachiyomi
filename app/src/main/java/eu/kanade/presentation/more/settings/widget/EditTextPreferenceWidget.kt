@@ -59,6 +59,7 @@ fun EditTextPreferenceWidget(
             ),
             confirmButton = {
                 TextButton(
+                    enabled = textFieldValue.text != value && textFieldValue.text.isNotEmpty(),
                     onClick = {
                         scope.launch {
                             if (onConfirm(textFieldValue.text)) {

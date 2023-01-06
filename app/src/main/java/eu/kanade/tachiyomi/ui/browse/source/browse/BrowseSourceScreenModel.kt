@@ -301,7 +301,7 @@ class BrowseSourceScreenModel(
                 // Choose a category
                 else -> {
                     val preselectedIds = getCategories.await(manga.id).map { it.id }
-                    setDialog(Dialog.ChangeMangaCategory(manga, categories.mapAsCheckboxState { it.id in preselectedIds }))
+                    showChangeMangaCategory(manga, categories.mapAsCheckboxState { it.id in preselectedIds })
                 }
             }
         }
@@ -360,8 +360,24 @@ class BrowseSourceScreenModel(
         filterSheet?.show()
     }
 
-    fun setDialog(dialog: Dialog?) {
-        mutableState.update { it.copy(dialog = dialog) }
+    fun dismissDialog() {
+        mutableState.update { it.copy(dialog = null) }
+    }
+
+    private fun showChangeMangaCategory(manga: Manga, initialSelection: List<CheckboxState.State<Category>>) {
+        mutableState.update { it.copy(dialog = Dialog.ChangeMangaCategory(manga, initialSelection)) }
+    }
+
+    fun showAddDuplicateMangaDialog(manga: Manga, duplicateManga: Manga) {
+        mutableState.update { it.copy(dialog = Dialog.AddDuplicateManga(manga, duplicateManga)) }
+    }
+
+    fun showRemoveMangaDialog(manga: Manga) {
+        mutableState.update { it.copy(dialog = Dialog.RemoveManga(manga)) }
+    }
+
+    fun showMigrateDialog(manga: Manga) {
+        mutableState.update { it.copy(dialog = Dialog.Migrate(manga)) }
     }
 
     fun setToolbarQuery(query: String?) {
@@ -403,11 +419,8 @@ class BrowseSourceScreenModel(
 
     sealed class Dialog {
         data class RemoveManga(val manga: Manga) : Dialog()
-        data class AddDuplicateManga(val manga: Manga, val duplicate: Manga) : Dialog()
-        data class ChangeMangaCategory(
-            val manga: Manga,
-            val initialSelection: List<CheckboxState.State<Category>>,
-        ) : Dialog()
+        data class AddDuplicateManga(val manga: Manga, val duplicateManga: Manga) : Dialog()
+        data class ChangeMangaCategory(val manga: Manga, val initialSelection: List<CheckboxState.State<Category>>) : Dialog()
         data class Migrate(val newManga: Manga) : Dialog()
     }
 

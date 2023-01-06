@@ -47,7 +47,6 @@ class CategoryScreenModel(
         coroutineScope.launch {
             when (createCategoryWithName.await(name)) {
                 is CreateCategoryWithName.Result.InternalError -> _events.send(CategoryEvent.InternalError)
-                CreateCategoryWithName.Result.NameAlreadyExistsError -> _events.send(CategoryEvent.CategoryWithNameAlreadyExists)
                 else -> {}
             }
         }
@@ -84,17 +83,7 @@ class CategoryScreenModel(
         coroutineScope.launch {
             when (renameCategory.await(category, name)) {
                 is RenameCategory.Result.InternalError -> _events.send(CategoryEvent.InternalError)
-                RenameCategory.Result.NameAlreadyExistsError -> _events.send(CategoryEvent.CategoryWithNameAlreadyExists)
                 else -> {}
-            }
-        }
-    }
-
-    fun showDialog(dialog: CategoryDialog) {
-        mutableState.update {
-            when (it) {
-                CategoryScreenState.Loading -> it
-                is CategoryScreenState.Success -> it.copy(dialog = dialog)
             }
         }
     }
@@ -107,18 +96,44 @@ class CategoryScreenModel(
             }
         }
     }
-}
 
-sealed class CategoryDialog {
-    object Create : CategoryDialog()
-    data class Rename(val category: Category) : CategoryDialog()
-    data class Delete(val category: Category) : CategoryDialog()
-}
+    fun showCreateCategoryDialog() {
+        mutableState.update { state ->
+            when (state) {
+                CategoryScreenState.Loading -> state
+                is CategoryScreenState.Success -> state.copy(dialog = Dialog.CreateCategory)
+            }
+        }
+    }
 
-sealed class CategoryEvent {
-    sealed class LocalizedMessage(@StringRes val stringRes: Int) : CategoryEvent()
-    object CategoryWithNameAlreadyExists : LocalizedMessage(R.string.error_category_exists)
-    object InternalError : LocalizedMessage(R.string.internal_error)
+    fun showRenameCategoryDialog(categoryToRename: Category) {
+        mutableState.update { state ->
+            when (state) {
+                CategoryScreenState.Loading -> state
+                is CategoryScreenState.Success -> state.copy(dialog = Dialog.RenameCategory(categoryToRename))
+            }
+        }
+    }
+
+    fun showDeleteCategoryDialog(categoryToDelete: Category) {
+        mutableState.update { state ->
+            when (state) {
+                CategoryScreenState.Loading -> state
+                is CategoryScreenState.Success -> state.copy(dialog = Dialog.DeleteCategory(categoryToDelete))
+            }
+        }
+    }
+
+    sealed class Dialog {
+        object CreateCategory : Dialog()
+        data class RenameCategory(val categoryToRename: Category) : Dialog()
+        data class DeleteCategory(val categoryToDelete: Category) : Dialog()
+    }
+
+    sealed class CategoryEvent {
+        sealed class LocalizedMessage(@StringRes val stringRes: Int) : CategoryEvent()
+        object InternalError : LocalizedMessage(R.string.internal_error)
+    }
 }
 
 sealed class CategoryScreenState {
@@ -129,7 +144,7 @@ sealed class CategoryScreenState {
     @Immutable
     data class Success(
         val categories: List<Category>,
-        val dialog: CategoryDialog? = null,
+        val dialog: CategoryScreenModel.Dialog? = null,
     ) : CategoryScreenState() {
 
         val isEmpty: Boolean

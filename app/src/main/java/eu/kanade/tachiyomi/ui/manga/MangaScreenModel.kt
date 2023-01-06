@@ -659,10 +659,10 @@ class MangaInfoScreenModel(
      * @param chapters the list of selected chapters.
      * @param read whether to mark chapters as read or unread.
      */
-    fun markChaptersRead(chapters: List<Chapter>, read: Boolean) {
+    fun markChaptersRead(chapters: List<Chapter>, markAsRead: Boolean) {
         coroutineScope.launchIO {
             setReadStatus.await(
-                read = read,
+                read = markAsRead,
                 chapters = chapters.toTypedArray(),
             )
         }
@@ -930,16 +930,6 @@ class MangaInfoScreenModel(
         return sourceManager.getOrStub(manga.source)
     }
 
-    sealed class Dialog {
-        data class ChangeCategory(val manga: Manga, val initialSelection: List<CheckboxState<Category>>) : Dialog()
-        data class DeleteChapters(val chapters: List<Chapter>) : Dialog()
-        data class DuplicateManga(val manga: Manga, val duplicate: Manga) : Dialog()
-        data class DownloadCustomAmount(val max: Int) : Dialog()
-        object SettingsSheet : Dialog()
-        object TrackSheet : Dialog()
-        object FullCover : Dialog()
-    }
-
     fun dismissDialog() {
         mutableState.update { state ->
             when (state) {
@@ -959,11 +949,38 @@ class MangaInfoScreenModel(
         }
     }
 
-    fun showDeleteChapterDialog(chapters: List<Chapter>) {
+    fun showBookmarkChaptersDialog(chapters: List<Chapter>, bookmarked: Boolean) {
         mutableState.update { state ->
             when (state) {
                 MangaScreenState.Loading -> state
-                is MangaScreenState.Success -> state.copy(dialog = Dialog.DeleteChapters(chapters))
+                is MangaScreenState.Success -> state.copy(dialog = Dialog.BookmarkChapters(chapters, bookmarked))
+            }
+        }
+    }
+
+    fun showMarkPreviousChapterReadDialog(pointer: Chapter) {
+        mutableState.update { state ->
+            when (state) {
+                MangaScreenState.Loading -> state
+                is MangaScreenState.Success -> state.copy(dialog = Dialog.MarkPreviousChapterRead(pointer))
+            }
+        }
+    }
+
+    fun showMarkChaptersReadDialog(chapters: List<Chapter>, markAsRead: Boolean) {
+        mutableState.update { state ->
+            when (state) {
+                MangaScreenState.Loading -> state
+                is MangaScreenState.Success -> state.copy(dialog = Dialog.MarkChaptersRead(chapters, markAsRead))
+            }
+        }
+    }
+
+    fun showDeleteChapterDialog(chaptersToDelete: List<Chapter>) {
+        mutableState.update { state ->
+            when (state) {
+                MangaScreenState.Loading -> state
+                is MangaScreenState.Success -> state.copy(dialog = Dialog.DeleteChapters(chaptersToDelete))
             }
         }
     }
@@ -997,6 +1014,19 @@ class MangaInfoScreenModel(
                 }
             }
         }
+    }
+
+    sealed class Dialog {
+        data class ChangeCategory(val manga: Manga, val initialSelection: List<CheckboxState<Category>>) : Dialog()
+        data class BookmarkChapters(val chapters: List<Chapter>, val bookmarked: Boolean) : Dialog()
+        data class MarkChaptersRead(val chapters: List<Chapter>, val markAsRead: Boolean) : Dialog()
+        data class MarkPreviousChapterRead(val pointer: Chapter) : Dialog()
+        data class DeleteChapters(val chaptersToDelete: List<Chapter>) : Dialog()
+        data class DuplicateManga(val manga: Manga, val duplicate: Manga) : Dialog()
+        data class DownloadCustomAmount(val max: Int) : Dialog()
+        object SettingsSheet : Dialog()
+        object TrackSheet : Dialog()
+        object FullCover : Dialog()
     }
 }
 
