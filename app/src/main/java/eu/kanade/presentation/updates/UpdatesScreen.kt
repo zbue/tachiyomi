@@ -50,8 +50,8 @@ fun UpdateScreen(
     onInvertSelection: () -> Unit,
     onUpdateLibrary: () -> Boolean,
     onDownloadChapter: (List<UpdatesItem>, ChapterDownloadAction) -> Unit,
-    onMultiBookmarkClicked: (List<UpdatesItem>, bookmark: Boolean) -> Unit,
-    onMultiMarkAsReadClicked: (List<UpdatesItem>, read: Boolean) -> Unit,
+    onMultiBookmarkClicked: (List<UpdatesItem>, bookmarked: Boolean) -> Unit,
+    onMultiMarkAsReadClicked: (List<UpdatesItem>, markAsRead: Boolean) -> Unit,
     onMultiDeleteClicked: (List<UpdatesItem>) -> Unit,
     onUpdateSelected: (UpdatesItem, Boolean, Boolean, Boolean) -> Unit,
     onOpenChapter: (UpdatesItem) -> Unit,
@@ -175,8 +175,8 @@ private fun UpdatesAppBar(
 private fun UpdatesBottomBar(
     selected: List<UpdatesItem>,
     onDownloadChapter: (List<UpdatesItem>, ChapterDownloadAction) -> Unit,
-    onMultiBookmarkClicked: (List<UpdatesItem>, bookmark: Boolean) -> Unit,
-    onMultiMarkAsReadClicked: (List<UpdatesItem>, read: Boolean) -> Unit,
+    onMultiBookmarkClicked: (List<UpdatesItem>, bookmarked: Boolean) -> Unit,
+    onMultiMarkAsReadClicked: (List<UpdatesItem>, markAsRead: Boolean) -> Unit,
     onMultiDeleteClicked: (List<UpdatesItem>) -> Unit,
 ) {
     MangaBottomActionMenu(

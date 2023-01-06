@@ -2,6 +2,7 @@ package eu.kanade.presentation.components
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import eu.kanade.tachiyomi.R
@@ -16,12 +17,12 @@ fun ConfirmActionDialog(
     AlertDialog(
         onDismissRequest = onDismissRequest,
         dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+            TextButton(onClick = onDismissRequest) {
                 Text(text = stringResource(R.string.action_cancel))
             }
         },
         confirmButton = {
-            androidx.compose.material3.TextButton(
+            TextButton(
                 onClick = {
                     onDismissRequest()
                     onConfirm()
