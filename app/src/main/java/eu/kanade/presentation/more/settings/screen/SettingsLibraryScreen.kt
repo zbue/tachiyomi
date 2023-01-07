@@ -338,7 +338,7 @@ object SettingsLibraryScreen : SearchableSettings {
             contentAlignment = Alignment.Center,
         ) {
             Surface(
-                modifier = Modifier.size(maxWidth, maxHeight / 3),
+                modifier = Modifier.size(maxWidth, 128.dp / 3),
                 shape = MaterialTheme.shapes.large,
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
