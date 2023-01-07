@@ -272,13 +272,13 @@ class MangaInfoScreenModel(
                 // Add to library
                 // First, check if duplicate exists if callback is provided
                 if (checkDuplicate) {
-                    val duplicate = getDuplicateLibraryManga.await(manga.title, manga.source)
+                    val duplicateManga = getDuplicateLibraryManga.await(manga.title, manga.source)
 
-                    if (duplicate != null) {
+                    if (duplicateManga != null) {
                         mutableState.update { state ->
                             when (state) {
                                 MangaScreenState.Loading -> state
-                                is MangaScreenState.Success -> state.copy(dialog = Dialog.DuplicateManga(manga, duplicate))
+                                is MangaScreenState.Success -> state.copy(dialog = Dialog.DuplicateManga(manga, duplicateManga))
                             }
                         }
                         return@launchIO
@@ -1022,7 +1022,7 @@ class MangaInfoScreenModel(
         data class MarkChaptersRead(val chapters: List<Chapter>, val markAsRead: Boolean) : Dialog()
         data class MarkPreviousChapterRead(val pointer: Chapter) : Dialog()
         data class DeleteChapters(val chaptersToDelete: List<Chapter>) : Dialog()
-        data class DuplicateManga(val manga: Manga, val duplicate: Manga) : Dialog()
+        data class DuplicateManga(val manga: Manga, val duplicateManga: Manga) : Dialog()
         data class DownloadCustomAmount(val max: Int) : Dialog()
         object SettingsSheet : Dialog()
         object TrackSheet : Dialog()
