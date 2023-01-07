@@ -200,7 +200,7 @@ object LibraryTab : Tab {
             }
         }
 
-        val onDismissRequest = screenModel::dismissDialog
+        val onDismissRequest = { screenModel.dismissDialog() }
         when (val dialog = state.dialog) {
             is LibraryScreenModel.Dialog.ChangeCategory -> {
                 ChangeCategoryDialog(

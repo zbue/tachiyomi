@@ -99,15 +99,17 @@ class SourcesScreenModel(
         mutableState.update { it.copy(dialog = null) }
     }
 
-    fun showSourceDialog(source: Source) {
-        mutableState.update { it.copy(dialog = Dialog(source)) }
+    fun showSourceOptionsDialog(source: Source) {
+        mutableState.update { it.copy(dialog = Dialog.SourceOptions(source)) }
     }
 
     sealed class Event {
         object FailedFetchingSources : Event()
     }
 
-    data class Dialog(val source: Source)
+    sealed class Dialog {
+        data class SourceOptions(val source: Source) : Dialog()
+    }
 
     companion object {
         const val PINNED_KEY = "pinned"

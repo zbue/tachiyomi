@@ -85,6 +85,7 @@ class MigrateSearchScreen(private val mangaId: Long) : Screen {
             onLongClickItem = { navigator.push(MangaScreen(it.id, true)) },
         )
 
+        val onDismissRequest = { screenModel.dismissDialog() }
         when (val dialog = state.dialog) {
             null -> {}
             is MigrateSearchScreenModel.Dialog.Migrate -> {
@@ -92,7 +93,7 @@ class MigrateSearchScreen(private val mangaId: Long) : Screen {
                     oldManga = state.manga!!,
                     newManga = dialog.manga,
                     screenModel = rememberScreenModel { MigrateDialogScreenModel() },
-                    onDismissRequest = screenModel::dismissDialog,
+                    onDismissRequest = onDismissRequest,
                     onClickTitle = {
                         navigator.push(MangaScreen(dialog.manga.id, true))
                     },

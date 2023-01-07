@@ -133,7 +133,6 @@ class MangaScreen(
 
         val onDismissRequest = { screenModel.dismissDialog() }
         when (val dialog = successState.dialog) {
-            null -> {}
             is MangaInfoScreenModel.Dialog.ChangeCategory -> {
                 ChangeCategoryDialog(
                     initialSelection = dialog.initialSelection,
@@ -254,6 +253,7 @@ class MangaScreen(
                     LoadingScreen(Modifier.systemBarsPadding())
                 }
             }
+            null -> {}
         }
     }
 

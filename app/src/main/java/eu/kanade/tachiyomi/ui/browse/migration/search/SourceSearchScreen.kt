@@ -96,13 +96,14 @@ data class SourceSearchScreen(
             )
         }
 
+        val onDismissRequest = { screenModel.dismissDialog() }
         when (val dialog = state.dialog) {
             is BrowseSourceScreenModel.Dialog.Migrate -> {
                 MigrateDialog(
                     oldManga = oldManga,
                     newManga = dialog.newManga,
                     screenModel = rememberScreenModel { MigrateDialogScreenModel() },
-                    onDismissRequest = screenModel::dismissDialog,
+                    onDismissRequest = onDismissRequest,
                     onClickTitle = { navigator.push(MangaScreen(dialog.newManga.id)) },
                     onPopScreen = {
                         scope.launch {

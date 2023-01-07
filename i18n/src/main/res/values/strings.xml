@@ -672,9 +672,9 @@
     <string name="confirm_bookmark_chapters">You are about to bookmark the selected unbookmarked chapters</string>
     <string name="confirm_remove_bookmark_chapters">You are about to unbookmark the selected bookmarked chapters</string>
     <string name="confirm_mark_as_read_chapters">You are about to mark the selected unread chapters as read</string>
-    <string name="confirm_mark_as_read_selection">You are about to mark all the unread chapters of selected manga as read</string>
+    <string name="confirm_mark_as_read_selection">You are about to mark all unread chapters of selected manga as read</string>
     <string name="confirm_mark_as_unread_chapters">You are about to mark the selected read/partially read chapters as unread</string>
-    <string name="confirm_mark_as_unread_selection">You are about to mark all the read/partially read chapters of selected manga as unread</string>
+    <string name="confirm_mark_as_unread_selection">You are about to mark all read/partially read chapters of selected manga as unread</string>
     <string name="confirm_mark_previous_as_read_chapters">You are about to mark previous unread chapters as read starting from \"%s\"</string>
     <string name="chapter_settings">Chapter settings</string>
     <string name="confirm_set_chapter_settings">Are you sure you want to save these settings as default?</string>
