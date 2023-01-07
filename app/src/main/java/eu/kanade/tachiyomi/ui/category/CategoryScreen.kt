@@ -52,7 +52,8 @@ class CategoryScreen : Screen {
             CategoryDialog.Create -> {
                 CategoryCreateDialog(
                     onDismissRequest = screenModel::dismissDialog,
-                    onCreate = { screenModel.createCategory(it) },
+                    onCreate = screenModel::createCategory,
+                    categories = successState.categories,
                 )
             }
             is CategoryDialog.Rename -> {

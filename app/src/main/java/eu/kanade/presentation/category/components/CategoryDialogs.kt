@@ -15,6 +15,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import eu.kanade.domain.category.model.Category
+import eu.kanade.domain.category.model.anyWithName
 import eu.kanade.tachiyomi.R
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
@@ -23,6 +24,7 @@ import kotlin.time.Duration.Companion.seconds
 fun CategoryCreateDialog(
     onDismissRequest: () -> Unit,
     onCreate: (String) -> Unit,
+    categories: List<Category>,
 ) {
     var name by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
@@ -30,10 +32,13 @@ fun CategoryCreateDialog(
     AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
-            TextButton(onClick = {
-                onCreate(name)
-                onDismissRequest()
-            },) {
+            TextButton(
+                enabled = !categories.anyWithName(name) && name.isNotEmpty(),
+                onClick = {
+                    onCreate(name)
+                    onDismissRequest()
+                },
+            ) {
                 Text(text = stringResource(R.string.action_add))
             }
         },
@@ -78,10 +83,13 @@ fun CategoryRenameDialog(
     AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
-            TextButton(onClick = {
-                onRename(name)
-                onDismissRequest()
-            },) {
+            TextButton(
+                enabled = name != category.name && name.isNotEmpty(),
+                onClick = {
+                    onRename(name)
+                    onDismissRequest()
+                },
+            ) {
                 Text(text = stringResource(android.R.string.ok))
             }
         },
