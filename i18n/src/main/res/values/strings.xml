@@ -69,7 +69,9 @@
     <string name="action_mark_previous_as_read">Mark previous as read</string>
     <string name="action_download">Download</string>
     <string name="action_bookmark">Bookmark chapter</string>
+    <string name="action_bookmark_plain">Bookmark</string>
     <string name="action_remove_bookmark">Unbookmark chapter</string>
+    <string name="action_remove_bookmark_plain">Unbookmark</string>
     <string name="action_delete">Delete</string>
     <string name="action_update_library">Update library</string>
     <string name="action_enable_all">Enable all</string>
@@ -666,7 +668,14 @@
     <string name="cover_saved">Cover saved</string>
     <string name="error_saving_cover">Error saving cover</string>
     <string name="error_sharing_cover">Error sharing cover</string>
-    <string name="confirm_delete_chapters">Are you sure you want to delete the selected chapters?</string>
+    <string name="confirm_delete_chapters">You are about to delete the selected downloaded chapters</string>
+    <string name="confirm_bookmark_chapters">You are about to bookmark the selected unbookmarked chapters</string>
+    <string name="confirm_remove_bookmark_chapters">You are about to unbookmark the selected bookmarked chapters</string>
+    <string name="confirm_mark_as_read_chapters">You are about to mark the selected unread chapters as read</string>
+    <string name="confirm_mark_as_unread_chapters">You are about to mark the selected read/partially read chapters as unread</string>
+    <string name="confirm_mark_as_read_selection">You are about to mark all unread chapters of selected manga as read</string>
+    <string name="confirm_mark_as_unread_selection">You are about to mark all read/partially read chapters of selected manga as unread</string>
+    <string name="confirm_mark_previous_as_read_chapters">You are about to mark previous unread chapters as read starting from \"%s\"</string>
     <string name="chapter_settings">Chapter settings</string>
     <string name="confirm_set_chapter_settings">Are you sure you want to save these settings as default?</string>
     <string name="also_set_chapter_settings_for_library">Also apply to all entries in my library</string>
@@ -717,7 +726,8 @@
     <string name="track_remove_finish_date_conf_text">This will remove your previously selected finish date from %s</string>
 
     <!-- Category activity -->
-    <string name="error_category_exists">A category with this name already exists!</string>
+    <string name="error_category_exists">Already exists!</string>
+    <string name="error_category_empty_details">Category name must contain any character</string>
     <!-- missing undo feature after Compose rewrite #7454 -->
     <string name="snack_categories_deleted">Categories deleted</string>
 

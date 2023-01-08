@@ -31,9 +31,9 @@ import cafe.adriel.voyager.navigator.tab.TabOptions
 import eu.kanade.domain.category.model.Category
 import eu.kanade.domain.library.model.LibraryManga
 import eu.kanade.domain.library.model.display
-import eu.kanade.domain.manga.model.Manga
 import eu.kanade.domain.manga.model.isLocal
 import eu.kanade.presentation.components.ChangeCategoryDialog
+import eu.kanade.presentation.components.ConfirmActionDialog
 import eu.kanade.presentation.components.DeleteLibraryMangaDialog
 import eu.kanade.presentation.components.EmptyScreen
 import eu.kanade.presentation.components.EmptyScreenAction
@@ -135,12 +135,12 @@ object LibraryTab : Tab {
             bottomBar = {
                 LibraryBottomActionMenu(
                     visible = state.selectionMode,
-                    onChangeCategoryClicked = screenModel::openChangeCategoryDialog,
-                    onMarkAsReadClicked = { screenModel.markReadSelection(true) },
-                    onMarkAsUnreadClicked = { screenModel.markReadSelection(false) },
+                    onChangeCategoryClicked = screenModel::showChangeCategoryDialog,
+                    onMarkAsReadClicked = { screenModel.showMarkReadSelection(true) },
+                    onMarkAsUnreadClicked = { screenModel.showMarkReadSelection(false) },
                     onDownloadClicked = screenModel::runDownloadActionSelection
                         .takeIf { state.selection.fastAll { !it.manga.isLocal() } },
-                    onDeleteClicked = screenModel::openDeleteMangaDialog,
+                    onDeleteClicked = screenModel::showDeleteMangaDialog,
                 )
             },
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -200,7 +200,7 @@ object LibraryTab : Tab {
             }
         }
 
-        val onDismissRequest = screenModel::closeDialog
+        val onDismissRequest = { screenModel.dismissDialog() }
         when (val dialog = state.dialog) {
             is LibraryScreenModel.Dialog.ChangeCategory -> {
                 ChangeCategoryDialog(
@@ -216,9 +216,20 @@ object LibraryTab : Tab {
                     },
                 )
             }
+            is LibraryScreenModel.Dialog.MarkReadSelection -> {
+                val dialogTextRes = if (dialog.markAsRead) R.string.confirm_mark_as_read_selection else R.string.confirm_mark_as_unread_selection
+                val confirmTextRes = if (dialog.markAsRead) R.string.action_mark_as_read else R.string.action_mark_as_unread
+
+                ConfirmActionDialog(
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = { screenModel.markReadSelection(dialog.markAsRead) },
+                    dialogText = context.getString(dialogTextRes),
+                    confirmText = context.getString(confirmTextRes),
+                )
+            }
             is LibraryScreenModel.Dialog.DeleteManga -> {
                 DeleteLibraryMangaDialog(
-                    containsLocalManga = dialog.manga.any(Manga::isLocal),
+                    containsLocalManga = dialog.manga.any { it.isLocal() },
                     onDismissRequest = onDismissRequest,
                     onConfirm = { deleteManga, deleteChapter ->
                         screenModel.removeMangas(dialog.manga, deleteManga, deleteChapter)

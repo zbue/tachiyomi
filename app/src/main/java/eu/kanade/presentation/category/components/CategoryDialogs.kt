@@ -1,5 +1,7 @@
 package eu.kanade.presentation.category.components
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -14,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import eu.kanade.domain.category.model.Category
 import eu.kanade.domain.category.model.anyWithName
 import eu.kanade.tachiyomi.R
@@ -27,13 +30,15 @@ fun CategoryCreateDialog(
     categories: List<Category>,
 ) {
     var name by remember { mutableStateOf("") }
+
     val focusRequester = remember { FocusRequester() }
+    val nameAlreadyExists = remember(name) { categories.anyWithName(name) }
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(
-                enabled = !categories.anyWithName(name) && name.isNotEmpty(),
+                enabled = name.isNotEmpty() && !nameAlreadyExists,
                 onClick = {
                     onCreate(name)
                     onDismissRequest()
@@ -51,16 +56,25 @@ fun CategoryCreateDialog(
             Text(text = stringResource(R.string.action_add_category))
         },
         text = {
-            OutlinedTextField(
-                modifier = Modifier
-                    .focusRequester(focusRequester),
-                value = name,
-                onValueChange = { name = it },
-                label = {
-                    Text(text = stringResource(R.string.name))
-                },
-                singleLine = true,
-            )
+            Column {
+                Text(
+                    modifier = Modifier.padding(bottom = 12.dp),
+                    text = stringResource(id = R.string.error_category_empty_details),
+                )
+
+                OutlinedTextField(
+                    modifier = Modifier
+                        .focusRequester(focusRequester),
+                    value = name,
+                    onValueChange = { name = it },
+                    label = {
+                        val msgRes = if (name.isNotEmpty() && nameAlreadyExists) R.string.error_category_exists else R.string.name
+                        Text(text = stringResource(msgRes))
+                    },
+                    isError = name.isNotEmpty() && nameAlreadyExists,
+                    singleLine = true,
+                )
+            }
         },
     )
 
@@ -76,15 +90,19 @@ fun CategoryRenameDialog(
     onDismissRequest: () -> Unit,
     onRename: (String) -> Unit,
     category: Category,
+    categories: List<Category>,
 ) {
     var name by remember { mutableStateOf(category.name) }
+    var valueHasChanged by remember { mutableStateOf(false) }
+
     val focusRequester = remember { FocusRequester() }
+    val nameAlreadyExists = remember(name) { categories.anyWithName(name) }
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(
-                enabled = name != category.name && name.isNotEmpty(),
+                enabled = name.isNotEmpty() && !nameAlreadyExists,
                 onClick = {
                     onRename(name)
                     onDismissRequest()
@@ -102,16 +120,30 @@ fun CategoryRenameDialog(
             Text(text = stringResource(R.string.action_rename_category))
         },
         text = {
-            OutlinedTextField(
-                modifier = Modifier
-                    .focusRequester(focusRequester),
-                value = name,
-                onValueChange = { name = it },
-                label = {
-                    Text(text = stringResource(R.string.name))
-                },
-                singleLine = true,
-            )
+            Column {
+                Text(
+                    modifier = Modifier.padding(bottom = 12.dp),
+                    text = stringResource(id = R.string.error_category_empty_details),
+                )
+
+                OutlinedTextField(
+                    modifier = Modifier
+                        .focusRequester(focusRequester),
+                    value = name,
+                    onValueChange = {
+                        name = it
+                        if (name.isNotEmpty()) {
+                            valueHasChanged = true
+                        }
+                    },
+                    label = {
+                        val msgRes = if (valueHasChanged && nameAlreadyExists) R.string.error_category_exists else R.string.name
+                        Text(text = stringResource(msgRes))
+                    },
+                    isError = valueHasChanged && nameAlreadyExists,
+                    singleLine = true,
+                )
+            }
         },
     )
 

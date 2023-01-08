@@ -203,13 +203,8 @@ data class BrowseSourceScreen(
                     scope.launchIO {
                         val duplicateManga = screenModel.getDuplicateLibraryManga(manga)
                         when {
-                            manga.favorite -> screenModel.setDialog(BrowseSourceScreenModel.Dialog.RemoveManga(manga))
-                            duplicateManga != null -> screenModel.setDialog(
-                                BrowseSourceScreenModel.Dialog.AddDuplicateManga(
-                                    manga,
-                                    duplicateManga,
-                                ),
-                            )
+                            manga.favorite -> screenModel.showRemoveMangaDialog(manga)
+                            duplicateManga != null -> screenModel.showAddDuplicateMangaDialog(manga, duplicateManga)
                             else -> screenModel.addFavorite(manga)
                         }
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -218,15 +213,15 @@ data class BrowseSourceScreen(
             )
         }
 
-        val onDismissRequest = { screenModel.setDialog(null) }
+        val onDismissRequest = { screenModel.dismissDialog() }
         when (val dialog = state.dialog) {
             is BrowseSourceScreenModel.Dialog.Migrate -> {}
             is BrowseSourceScreenModel.Dialog.AddDuplicateManga -> {
                 DuplicateMangaDialog(
                     onDismissRequest = onDismissRequest,
                     onConfirm = { screenModel.addFavorite(dialog.manga) },
-                    onOpenManga = { navigator.push(MangaScreen(dialog.duplicate.id)) },
-                    duplicateFrom = screenModel.getSourceOrStub(dialog.duplicate),
+                    onOpenManga = { navigator.push(MangaScreen(dialog.duplicateManga.id)) },
+                    duplicateFrom = screenModel.getSourceOrStub(dialog.duplicateManga),
                 )
             }
             is BrowseSourceScreenModel.Dialog.RemoveManga -> {
@@ -249,7 +244,7 @@ data class BrowseSourceScreen(
                     },
                 )
             }
-            else -> {}
+            null -> {}
         }
 
         LaunchedEffect(state.filters) {

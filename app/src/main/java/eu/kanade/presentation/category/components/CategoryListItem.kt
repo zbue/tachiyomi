@@ -79,3 +79,7 @@ fun CategoryListItem(
         }
     }
 }
+
+data class CategoryItem(
+    val category: Category,
+)

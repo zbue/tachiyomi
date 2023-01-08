@@ -38,6 +38,7 @@ import eu.kanade.presentation.components.ChapterDownloadAction
 import eu.kanade.presentation.components.ChapterDownloadIndicator
 import eu.kanade.presentation.components.ListGroupHeader
 import eu.kanade.presentation.components.MangaCover
+import eu.kanade.presentation.manga.components.DotSeparatorText
 import eu.kanade.presentation.util.ReadItemAlpha
 import eu.kanade.presentation.util.padding
 import eu.kanade.presentation.util.selectedBackground
@@ -112,6 +113,7 @@ fun LazyListScope.updatesUiItems(
                 UpdatesUiItem(
                     modifier = Modifier.animateItemPlacement(),
                     update = updatesItem.update,
+                    readProgress = updatesItem.readProgressString,
                     selected = updatesItem.selected,
                     onLongClick = {
                         onUpdateSelected(updatesItem, !updatesItem.selected, true, true)
@@ -138,6 +140,7 @@ fun LazyListScope.updatesUiItems(
 fun UpdatesUiItem(
     modifier: Modifier,
     update: UpdatesWithRelations,
+    readProgress: String?,
     selected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
@@ -213,6 +216,20 @@ fun UpdatesUiItem(
                     onTextLayout = { textHeight = it.size.height },
                     modifier = Modifier.alpha(textAlpha),
                 )
+                if (readProgress != null) {
+                    Row(Modifier.weight(1f)) {
+                        DotSeparatorText()
+                        Text(
+                            text = readProgress,
+                            maxLines = 1,
+                            color = secondaryTextColor,
+                            style = MaterialTheme.typography.bodySmall,
+                            overflow = TextOverflow.Ellipsis,
+                            onTextLayout = { textHeight = it.size.height },
+                            modifier = Modifier.alpha(textAlpha),
+                        )
+                    }
+                }
             }
         }
         ChapterDownloadIndicator(

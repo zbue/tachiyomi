@@ -1,9 +1,8 @@
-package eu.kanade.presentation.manga
+package eu.kanade.presentation.manga.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -158,7 +157,7 @@ private fun SetAsDefaultDialog(
 }
 
 @Composable
-private fun ColumnScope.FilterPage(
+private fun FilterPage(
     downloadFilter: TriStateFilter,
     onDownloadFilterChanged: ((TriStateFilter) -> Unit)?,
     unreadFilter: TriStateFilter,
@@ -184,7 +183,7 @@ private fun ColumnScope.FilterPage(
 }
 
 @Composable
-private fun ColumnScope.SortPage(
+private fun SortPage(
     sortingMode: Long,
     sortDescending: Boolean,
     onItemSelected: (Long) -> Unit,
@@ -207,7 +206,7 @@ private fun ColumnScope.SortPage(
 }
 
 @Composable
-private fun ColumnScope.DisplayPage(
+private fun DisplayPage(
     displayMode: Long,
     onItemSelected: (Long) -> Unit,
 ) {

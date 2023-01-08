@@ -51,23 +51,27 @@ fun Screen.sourcesTab(): TabContent {
                     navigator.push(BrowseSourceScreen(source.id, listing.query))
                 },
                 onClickPin = screenModel::togglePin,
-                onLongClickItem = screenModel::showSourceDialog,
+                onLongClickItem = screenModel::showSourceOptionsDialog,
             )
 
-            state.dialog?.let { dialog ->
-                val source = dialog.source
-                SourceOptionsDialog(
-                    source = source,
-                    onClickPin = {
-                        screenModel.togglePin(source)
-                        screenModel.closeDialog()
-                    },
-                    onClickDisable = {
-                        screenModel.toggleSource(source)
-                        screenModel.closeDialog()
-                    },
-                    onDismiss = screenModel::closeDialog,
-                )
+            val onDismissRequest = { screenModel.dismissDialog() }
+            when (val dialog = state.dialog) {
+                is SourcesScreenModel.Dialog.SourceOptions -> {
+                    val source = dialog.source
+                    SourceOptionsDialog(
+                        source = source,
+                        onClickPin = {
+                            screenModel.togglePin(source)
+                            onDismissRequest()
+                        },
+                        onClickDisable = {
+                            screenModel.toggleSource(source)
+                            onDismissRequest()
+                        },
+                        onDismiss = onDismissRequest,
+                    )
+                }
+                null -> {}
             }
 
             val internalErrString = stringResource(R.string.internal_error)

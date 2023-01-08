@@ -674,7 +674,11 @@ class LibraryScreenModel(
         mutableState.update { it.copy(searchQuery = query) }
     }
 
-    fun openChangeCategoryDialog() {
+    fun dismissDialog() {
+        mutableState.update { it.copy(dialog = null) }
+    }
+
+    fun showChangeCategoryDialog() {
         coroutineScope.launchIO {
             // Create a copy of selected manga
             val mangaList = state.value.selection.map { it.manga }
@@ -697,18 +701,19 @@ class LibraryScreenModel(
         }
     }
 
-    fun openDeleteMangaDialog() {
+    fun showDeleteMangaDialog() {
         val mangaList = state.value.selection.map { it.manga }
         mutableState.update { it.copy(dialog = Dialog.DeleteManga(mangaList)) }
     }
 
-    fun closeDialog() {
-        mutableState.update { it.copy(dialog = null) }
+    fun showMarkReadSelection(markAsRead: Boolean) {
+        mutableState.update { it.copy(dialog = Dialog.MarkReadSelection(markAsRead)) }
     }
 
     sealed class Dialog {
         data class ChangeCategory(val manga: List<Manga>, val initialSelection: List<CheckboxState<Category>>) : Dialog()
         data class DeleteManga(val manga: List<Manga>) : Dialog()
+        data class MarkReadSelection(val markAsRead: Boolean) : Dialog()
         data class DownloadCustomAmount(val manga: List<Manga>, val max: Int) : Dialog()
     }
 

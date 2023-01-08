@@ -53,6 +53,8 @@ import eu.kanade.tachiyomi.ui.browse.migration.MigrationFlags
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.util.lang.launchIO
 import eu.kanade.tachiyomi.util.lang.launchUI
+import eu.kanade.tachiyomi.util.system.logcat
+import logcat.LogPriority
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.Date
@@ -79,18 +81,19 @@ class MigrateSearchScreen(private val mangaId: Long) : Screen {
                 }
                 navigator.push(SourceSearchScreen(state.manga!!, it.id, state.searchQuery))
             },
-            onClickItem = { screenModel.setDialog(MigrateSearchDialog.Migrate(it)) },
+            onClickItem = screenModel::showMigrateDialog,
             onLongClickItem = { navigator.push(MangaScreen(it.id, true)) },
         )
 
+        val onDismissRequest = { screenModel.dismissDialog() }
         when (val dialog = state.dialog) {
             null -> {}
-            is MigrateSearchDialog.Migrate -> {
+            is MigrateSearchScreenModel.Dialog.Migrate -> {
                 MigrateDialog(
                     oldManga = state.manga!!,
                     newManga = dialog.manga,
                     screenModel = rememberScreenModel { MigrateDialogScreenModel() },
-                    onDismissRequest = { screenModel.setDialog(null) },
+                    onDismissRequest = onDismissRequest,
                     onClickTitle = {
                         navigator.push(MangaScreen(dialog.manga.id, true))
                     },
@@ -228,6 +231,7 @@ class MigrateDialogScreenModel(
                 replace = replace,
             )
         } catch (e: Throwable) {
+            logcat(LogPriority.ERROR, e)
         }
     }
 

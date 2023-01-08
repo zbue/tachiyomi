@@ -61,6 +61,7 @@ class CategoryScreen : Screen {
                     onDismissRequest = screenModel::dismissDialog,
                     onRename = { screenModel.renameCategory(dialog.category, it) },
                     category = dialog.category,
+                    categories = successState.categories,
                 )
             }
             is CategoryDialog.Delete -> {
