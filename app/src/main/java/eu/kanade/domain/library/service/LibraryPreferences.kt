@@ -56,6 +56,8 @@ class LibraryPreferences(
 
     fun localBadge() = preferenceStore.getBoolean("display_local_badge", true)
 
+    fun unreadBadge() = preferenceStore.getBoolean("display_unread_badge", true)
+
     fun languageBadge() = preferenceStore.getBoolean("display_language_badge", false)
 
     fun newShowUpdatesCount() = preferenceStore.getBoolean("library_show_updates_count", true)
