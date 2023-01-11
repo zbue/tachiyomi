@@ -372,7 +372,12 @@ class LibrarySettingsSheet(
 
             override fun initModels() {
                 downloadBadge.checked = libraryPreferences.downloadBadge().get()
-                unreadBadge.checked = libraryPreferences.unreadBadge().get()
+                if (libraryPreferences.showContinueReadingButton().get()) {
+                    unreadBadge.checked = true
+                    unreadBadge.enabled = false
+                } else {
+                    unreadBadge.checked = libraryPreferences.unreadBadge().get()
+                }
                 localBadge.checked = libraryPreferences.localBadge().get()
                 languageBadge.checked = libraryPreferences.languageBadge().get()
             }
