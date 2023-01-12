@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -35,14 +36,15 @@ import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material3.ElevatedSuggestionChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalMinimumTouchTargetEnforcement
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -228,23 +230,25 @@ fun ExpandableMangaDescription(
             shrunkDescription = trimmedDescription,
             expanded = expanded,
             modifier = Modifier
-                .padding(top = 8.dp)
-                .padding(horizontal = 16.dp)
+                .padding(top = MaterialTheme.padding.small)
+                .padding(horizontal = MaterialTheme.padding.medium)
                 .clickableNoIndication { onExpanded(!expanded) },
         )
         val tags = tagsProvider()
         if (!tags.isNullOrEmpty()) {
             Box(
                 modifier = Modifier
-                    .padding(top = 8.dp)
+                    .padding(top = MaterialTheme.padding.small)
                     .padding(vertical = 12.dp)
                     .animateContentSize(),
             ) {
                 if (expanded) {
                     FlowRow(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        mainAxisSpacing = 4.dp,
-                        crossAxisSpacing = 8.dp,
+                        modifier = Modifier
+                            .padding(bottom = MaterialTheme.padding.tiny)
+                            .padding(horizontal = MaterialTheme.padding.medium),
+                        mainAxisSpacing = MaterialTheme.padding.small,
+                        crossAxisSpacing = MaterialTheme.padding.small,
                     ) {
                         tags.forEach {
                             TagsChip(
@@ -255,8 +259,12 @@ fun ExpandableMangaDescription(
                     }
                 } else {
                     LazyRow(
-                        contentPadding = PaddingValues(horizontal = MaterialTheme.padding.medium),
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.tiny),
+                        contentPadding = PaddingValues(
+                            start = MaterialTheme.padding.medium,
+                            end = MaterialTheme.padding.medium,
+                            bottom = MaterialTheme.padding.tiny,
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
                     ) {
                         items(items = tags) {
                             TagsChip(
@@ -592,7 +600,7 @@ private fun MangaSummary(
                     modifier = Modifier.background(Brush.radialGradient(colors = colors.asReversed())),
                 )
             }
-        }.map { it.measure(Constraints.fixed(width = constraints.maxWidth, height = scrimHeight)) }
+        }.map { it.measure(Constraints.fixed(width = constraints.maxWidth, height = scrimHeight + 12)) }
 
         val currentHeight = shrunkHeight + ((heightDelta + scrimHeight) * animProgress).roundToInt()
         layout(constraints.maxWidth, currentHeight) {
@@ -614,13 +622,14 @@ private fun TagsChip(
     onClick: () -> Unit,
 ) {
     CompositionLocalProvider(LocalMinimumTouchTargetEnforcement provides false) {
-        SuggestionChip(
+        ElevatedSuggestionChip(
+            modifier = Modifier.defaultMinSize(minHeight = 28.dp),
             onClick = onClick,
             label = { Text(text = text, style = MaterialTheme.typography.bodySmall) },
             border = null,
-            colors = SuggestionChipDefaults.suggestionChipColors(
-                containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                labelColor = MaterialTheme.colorScheme.onSurface,
+            colors = SuggestionChipDefaults.elevatedSuggestionChipColors(
+                containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
+                labelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.87f),
             ),
         )
     }
