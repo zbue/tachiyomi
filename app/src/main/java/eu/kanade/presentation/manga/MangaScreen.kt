@@ -370,11 +370,7 @@ private fun MangaScreenSmallImpl(
                         key = MangaScreenItem.CHAPTER_HEADER,
                         contentType = MangaScreenItem.CHAPTER_HEADER,
                     ) {
-                        ChapterHeader(
-                            enabled = chapters.fastAll { !it.selected },
-                            chapterCount = chapters.size,
-                            onClick = onFilterClicked,
-                        )
+                        ChapterHeader(chapterCount = chapters.size)
                     }
 
                     sharedChapterItems(
@@ -575,11 +571,7 @@ fun MangaScreenLargeImpl(
                                 key = MangaScreenItem.CHAPTER_HEADER,
                                 contentType = MangaScreenItem.CHAPTER_HEADER,
                             ) {
-                                ChapterHeader(
-                                    enabled = chapters.fastAll { !it.selected },
-                                    chapterCount = chapters.size,
-                                    onClick = onFilterButtonClicked,
-                                )
+                                ChapterHeader(chapterCount = chapters.size)
                             }
 
                             sharedChapterItems(
