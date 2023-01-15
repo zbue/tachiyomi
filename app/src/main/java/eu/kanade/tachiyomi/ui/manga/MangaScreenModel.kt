@@ -48,6 +48,7 @@ import eu.kanade.tachiyomi.network.HttpException
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceManager
 import eu.kanade.tachiyomi.ui.manga.track.TrackItem
+import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.util.chapter.getChapterSort
 import eu.kanade.tachiyomi.util.chapter.getNextUnread
 import eu.kanade.tachiyomi.util.lang.launchIO
@@ -80,6 +81,7 @@ class MangaInfoScreenModel(
     private val isFromSource: Boolean,
     private val downloadPreferences: DownloadPreferences = Injekt.get(),
     private val libraryPreferences: LibraryPreferences = Injekt.get(),
+    private val readerPreferences: ReaderPreferences = Injekt.get(),
     private val uiPreferences: UiPreferences = Injekt.get(),
     private val trackManager: TrackManager = Injekt.get(),
     private val downloadManager: DownloadManager = Injekt.get(),
@@ -112,10 +114,14 @@ class MangaInfoScreenModel(
     private val isFavorited: Boolean
         get() = manga?.favorite ?: false
 
-    private val processedChapters: Sequence<ChapterItem>?
+    private val allChapters: List<ChapterItem>?
+        get() = successState?.chapters
+
+    private val filteredChapters: Sequence<ChapterItem>?
         get() = successState?.processedChapters
 
     val relativeTime by uiPreferences.relativeTime().asState(coroutineScope)
+    val skipFiltered by readerPreferences.skipFiltered().asState(coroutineScope)
     val dateFormat by mutableStateOf(UiPreferences.dateFormat(uiPreferences.dateFormat().get()))
 
     private val selectedPositions: Array<Int> = arrayOf(-1, -1) // first and last selected index in list
@@ -525,18 +531,17 @@ class MangaInfoScreenModel(
         return successState.chapters.getNextUnread(successState.manga)
     }
 
-    fun getUnreadChapters(): List<Chapter> {
-        return successState?.processedChapters
-            ?.filter { (chapter, dlStatus) -> !chapter.read && dlStatus == Download.State.NOT_DOWNLOADED }
-            ?.map { it.chapter }
-            ?.toList()
-            ?: emptyList()
+    fun getUnreadChapters(chapterItems: List<ChapterItem>): List<Chapter> {
+        return chapterItems
+            .filter { (chapter, dlStatus) -> !chapter.read && dlStatus == Download.State.NOT_DOWNLOADED }
+            .map { it.chapter }
     }
 
     fun getUnreadChaptersSorted(): List<Chapter> {
         val manga = successState?.manga ?: return emptyList()
-        val chapters = getUnreadChapters().sortedWith(getChapterSort(manga))
-        return if (manga.sortDescending()) chapters.reversed() else chapters
+        val chapterItems = if (skipFiltered) filteredChapters.orEmpty().toList() else allChapters.orEmpty()
+        val chaptersSorted = getUnreadChapters(chapterItems).sortedWith(getChapterSort(manga))
+        return if (manga.sortDescending()) chaptersSorted.reversed() else chaptersSorted
     }
 
     fun startDownload(
@@ -595,6 +600,7 @@ class MangaInfoScreenModel(
     }
 
     fun runDownloadAction(action: DownloadAction) {
+        val chapterItems = if (skipFiltered) filteredChapters.orEmpty().toList() else allChapters.orEmpty()
         val chaptersToDownload = when (action) {
             DownloadAction.NEXT_1_CHAPTER -> getUnreadChaptersSorted().take(1)
             DownloadAction.NEXT_5_CHAPTERS -> getUnreadChaptersSorted().take(5)
@@ -603,8 +609,8 @@ class MangaInfoScreenModel(
                 showDownloadCustomDialog()
                 return
             }
-            DownloadAction.UNREAD_CHAPTERS -> getUnreadChapters()
-            DownloadAction.ALL_CHAPTERS -> successState?.chapters?.map { it.chapter }
+            DownloadAction.UNREAD_CHAPTERS -> getUnreadChapters(chapterItems)
+            DownloadAction.ALL_CHAPTERS -> chapterItems.map { it.chapter }
         }
         if (!chaptersToDownload.isNullOrEmpty()) {
             startDownload(chaptersToDownload, false)
@@ -619,7 +625,7 @@ class MangaInfoScreenModel(
 
     fun markPreviousChapterRead(pointer: Chapter) {
         val successState = successState ?: return
-        val chapters = processedChapters.orEmpty().map { it.chapter }.toList()
+        val chapters = filteredChapters.orEmpty().map { it.chapter }.toList()
         val prevChapters = if (successState.manga.sortDescending()) chapters.asReversed() else chapters
         val pointerPos = prevChapters.indexOf(pointer)
         if (pointerPos != -1) markChaptersRead(prevChapters.take(pointerPos), true)
@@ -917,7 +923,8 @@ class MangaInfoScreenModel(
     }
 
     private fun showDownloadCustomDialog() {
-        val max = processedChapters?.count() ?: return
+        val chapterItems = if (skipFiltered) filteredChapters.orEmpty().toList() else allChapters.orEmpty()
+        val max = chapterItems.count()
         mutableState.update { state ->
             when (state) {
                 MangaScreenState.Loading -> state
