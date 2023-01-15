@@ -538,15 +538,15 @@ class MangaInfoScreenModel(
         return successState.chapters.getNextUnread(successState.manga)
     }
 
-    fun getUnreadChapters(items: List<ChapterItem>): List<Chapter> {
-        return items
+    fun getUnreadChapters(): List<Chapter> {
+        return getChapterItems()
             .filter { (chapter, dlStatus) -> !chapter.read && dlStatus == Download.State.NOT_DOWNLOADED }
             .map { it.chapter }
     }
 
     fun getUnreadChaptersSorted(): List<Chapter> {
         val manga = successState?.manga ?: return emptyList()
-        val chaptersSorted = getUnreadChapters(getChapterItems()).sortedWith(getChapterSort(manga))
+        val chaptersSorted = getUnreadChapters().sortedWith(getChapterSort(manga))
         return if (manga.sortDescending()) chaptersSorted.reversed() else chaptersSorted
     }
 
@@ -614,7 +614,7 @@ class MangaInfoScreenModel(
                 showDownloadCustomDialog()
                 return
             }
-            DownloadAction.UNREAD_CHAPTERS -> getUnreadChapters(getChapterItems())
+            DownloadAction.UNREAD_CHAPTERS -> getUnreadChapters()
             DownloadAction.ALL_CHAPTERS -> getChapterItems().map { it.chapter }
         }
         if (!chaptersToDownload.isNullOrEmpty()) {
