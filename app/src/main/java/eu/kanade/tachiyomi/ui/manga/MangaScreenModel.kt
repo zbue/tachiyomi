@@ -524,6 +524,13 @@ class MangaInfoScreenModel(
     }
 
     /**
+     * Returns the list of filtered or all chapter items if [skipFiltered] is false.
+     */
+    fun getChapterItems(): List<ChapterItem> {
+        return if (skipFiltered) filteredChapters.orEmpty().toList() else allChapters.orEmpty()
+    }
+
+    /**
      * Returns the next unread chapter or null if everything is read.
      */
     fun getNextUnreadChapter(): Chapter? {
@@ -531,16 +538,15 @@ class MangaInfoScreenModel(
         return successState.chapters.getNextUnread(successState.manga)
     }
 
-    fun getUnreadChapters(chapterItems: List<ChapterItem>): List<Chapter> {
-        return chapterItems
+    fun getUnreadChapters(items: List<ChapterItem>): List<Chapter> {
+        return items
             .filter { (chapter, dlStatus) -> !chapter.read && dlStatus == Download.State.NOT_DOWNLOADED }
             .map { it.chapter }
     }
 
     fun getUnreadChaptersSorted(): List<Chapter> {
         val manga = successState?.manga ?: return emptyList()
-        val chapterItems = if (skipFiltered) filteredChapters.orEmpty().toList() else allChapters.orEmpty()
-        val chaptersSorted = getUnreadChapters(chapterItems).sortedWith(getChapterSort(manga))
+        val chaptersSorted = getUnreadChapters(getChapterItems()).sortedWith(getChapterSort(manga))
         return if (manga.sortDescending()) chaptersSorted.reversed() else chaptersSorted
     }
 
@@ -600,7 +606,6 @@ class MangaInfoScreenModel(
     }
 
     fun runDownloadAction(action: DownloadAction) {
-        val chapterItems = if (skipFiltered) filteredChapters.orEmpty().toList() else allChapters.orEmpty()
         val chaptersToDownload = when (action) {
             DownloadAction.NEXT_1_CHAPTER -> getUnreadChaptersSorted().take(1)
             DownloadAction.NEXT_5_CHAPTERS -> getUnreadChaptersSorted().take(5)
@@ -609,8 +614,8 @@ class MangaInfoScreenModel(
                 showDownloadCustomDialog()
                 return
             }
-            DownloadAction.UNREAD_CHAPTERS -> getUnreadChapters(chapterItems)
-            DownloadAction.ALL_CHAPTERS -> chapterItems.map { it.chapter }
+            DownloadAction.UNREAD_CHAPTERS -> getUnreadChapters(getChapterItems())
+            DownloadAction.ALL_CHAPTERS -> getChapterItems().map { it.chapter }
         }
         if (!chaptersToDownload.isNullOrEmpty()) {
             startDownload(chaptersToDownload, false)
@@ -923,8 +928,7 @@ class MangaInfoScreenModel(
     }
 
     private fun showDownloadCustomDialog() {
-        val chapterItems = if (skipFiltered) filteredChapters.orEmpty().toList() else allChapters.orEmpty()
-        val max = chapterItems.count()
+        val max = getChapterItems().count()
         mutableState.update { state ->
             when (state) {
                 MangaScreenState.Loading -> state
