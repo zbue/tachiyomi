@@ -12,6 +12,7 @@ import eu.kanade.domain.library.model.LibraryManga
 import eu.kanade.domain.library.service.LibraryPreferences
 import eu.kanade.domain.manga.interactor.GetLibraryManga
 import eu.kanade.domain.manga.model.isLocal
+import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.track.interactor.GetTracks
 import eu.kanade.domain.track.model.Track
 import eu.kanade.presentation.more.stats.StatsScreenState
@@ -21,6 +22,7 @@ import eu.kanade.tachiyomi.data.preference.MANGA_HAS_UNREAD
 import eu.kanade.tachiyomi.data.preference.MANGA_NON_COMPLETED
 import eu.kanade.tachiyomi.data.preference.MANGA_NON_READ
 import eu.kanade.tachiyomi.data.track.TrackManager
+import eu.kanade.tachiyomi.source.SourceManager
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.util.lang.launchIO
 import kotlinx.coroutines.flow.update
@@ -32,7 +34,8 @@ class StatsScreenModel(
     private val getLibraryManga: GetLibraryManga = Injekt.get(),
     private val getTotalReadDuration: GetTotalReadDuration = Injekt.get(),
     private val getTracks: GetTracks = Injekt.get(),
-    private val preferences: LibraryPreferences = Injekt.get(),
+    private val libraryPreferences: LibraryPreferences = Injekt.get(),
+    private val sourcePreferences: SourcePreferences = Injekt.get(),
     private val trackManager: TrackManager = Injekt.get(),
 ) : StateScreenModel<StatsScreenState>(StatsScreenState.Loading) {
 
@@ -87,15 +90,15 @@ class StatsScreenModel(
     }
 
     private fun getGlobalUpdateItemCount(libraryManga: List<LibraryManga>): Int {
-        val includedCategories = preferences.libraryUpdateCategories().get().map { it.toLong() }
+        val includedCategories = libraryPreferences.libraryUpdateCategories().get().map { it.toLong() }
         val includedManga = if (includedCategories.isNotEmpty()) {
             libraryManga.filter { it.category in includedCategories }
         } else {
             libraryManga
         }
 
-        val excludedCategories = preferences.libraryUpdateCategoriesExclude().get().map { it.toLong() }
-        val excludedMangaIds = if (excludedCategories.isNotEmpty()) {
+        val excludedCategories = libraryPreferences.libraryUpdateCategoriesExclude().get().map { it.toLong() }
+        val excludedCategoriesMangaIds = if (excludedCategories.isNotEmpty()) {
             libraryManga.fastMapNotNull { manga ->
                 manga.id.takeIf { manga.category in excludedCategories }
             }
@@ -103,9 +106,28 @@ class StatsScreenModel(
             emptyList()
         }
 
-        val updateRestrictions = preferences.libraryUpdateMangaRestriction().get()
+        val includedSourceLang = sourcePreferences.enabledLanguages().get()
+        val includedSourceLangMangaIds = if (includedSourceLang.isNotEmpty()) {
+            libraryManga.fastMapNotNull { manga ->
+                manga.id.takeIf { Injekt.get<SourceManager>().getOrStub(manga.manga.source).lang in includedSourceLang }
+            }
+        } else {
+            emptyList()
+        }
+
+        val excludedSources = sourcePreferences.disabledSources().get()
+        val excludedSourcesMangaIds = if (excludedSources.isNotEmpty()) {
+            libraryManga.fastMapNotNull { manga ->
+                manga.id.takeIf { "${manga.manga.source}" in excludedSources }
+            }
+        } else {
+            emptyList()
+        }
+
+        val updateRestrictions = libraryPreferences.libraryUpdateMangaRestriction().get()
         return includedManga
-            .fastFilterNot { it.manga.id in excludedMangaIds }
+            .fastFilter { it.manga.id in includedSourceLangMangaIds }
+            .fastFilterNot { it.manga.id in excludedCategoriesMangaIds || it.manga.id in excludedSourcesMangaIds }
             .fastDistinctBy { it.manga.id }
             .fastCountNot {
                 (MANGA_NON_COMPLETED in updateRestrictions && it.manga.status.toInt() == SManga.COMPLETED) ||

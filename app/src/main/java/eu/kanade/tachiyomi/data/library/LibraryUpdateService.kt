@@ -21,6 +21,7 @@ import eu.kanade.domain.manga.interactor.GetManga
 import eu.kanade.domain.manga.interactor.UpdateManga
 import eu.kanade.domain.manga.model.Manga
 import eu.kanade.domain.manga.model.toMangaUpdate
+import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.track.interactor.GetTracks
 import eu.kanade.domain.track.interactor.InsertTrack
 import eu.kanade.domain.track.model.toDbTrack
@@ -85,6 +86,7 @@ class LibraryUpdateService(
     val sourceManager: SourceManager = Injekt.get(),
     val downloadPreferences: DownloadPreferences = Injekt.get(),
     val libraryPreferences: LibraryPreferences = Injekt.get(),
+    val sourcePreferences: SourcePreferences = Injekt.get(),
     val downloadManager: DownloadManager = Injekt.get(),
     val trackManager: TrackManager = Injekt.get(),
     val coverCache: CoverCache = Injekt.get(),
@@ -272,14 +274,29 @@ class LibraryUpdateService(
             }
 
             val categoriesToExclude = libraryPreferences.libraryUpdateCategoriesExclude().get().map { it.toLong() }
-            val excludedMangaIds = if (categoriesToExclude.isNotEmpty()) {
+            val categoriesToExcludeMangaIds = if (categoriesToExclude.isNotEmpty()) {
                 libraryManga.filter { it.category in categoriesToExclude }.map { it.manga.id }
             } else {
                 emptyList()
             }
 
+            val sourceLangToUpdate = sourcePreferences.enabledLanguages().get()
+            val sourceLangToUpdateMangaIds = if (sourceLangToUpdate.isNotEmpty()) {
+                libraryManga.filter { sourceManager.getOrStub(it.manga.source).lang in sourceLangToUpdate }.map { it.manga.id }
+            } else {
+                emptyList()
+            }
+
+            val sourcesToExclude = sourcePreferences.disabledSources().get()
+            val sourcesToExcludeMangaIds = if (sourcesToExclude.isNotEmpty()) {
+                libraryManga.filter { "${it.manga.source}" in sourcesToExclude }.map { it.manga.id }
+            } else {
+                emptyList()
+            }
+
             includedManga
-                .filterNot { it.manga.id in excludedMangaIds }
+                .filter { it.manga.id in sourceLangToUpdateMangaIds }
+                .filterNot { it.manga.id in categoriesToExcludeMangaIds || it.manga.id in sourcesToExcludeMangaIds }
                 .distinctBy { it.manga.id }
         }
 
