@@ -1,9 +1,7 @@
 package eu.kanade.presentation.components
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -14,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import eu.kanade.presentation.util.pillLayout
 
 @Composable
 fun Pill(
@@ -33,9 +32,7 @@ fun Pill(
         tonalElevation = elevation,
     ) {
         Box(
-            modifier = Modifier
-                .requiredWidth(IntrinsicSize.Max)
-                .padding(6.dp, 1.dp),
+            modifier = Modifier.pillLayout(),
             contentAlignment = Alignment.Center,
         ) {
             Text(

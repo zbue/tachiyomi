@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.util.fastForEachIndexed
 import kotlinx.coroutines.launch
 
 @Composable
@@ -66,12 +67,18 @@ fun TabbedScreen(
                 selectedTabIndex = state.currentPage,
                 indicator = { TabIndicator(it[state.currentPage]) },
             ) {
-                tabs.forEachIndexed { index, tab ->
+                tabs.fastForEachIndexed { index, tab ->
                     Tab(
                         selected = state.currentPage == index,
                         onClick = { scope.launch { state.animateScrollToPage(index) } },
-                        text = { TabText(text = stringResource(tab.titleRes), badgeCount = tab.badgeNumber) },
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurface,
+                        text = {
+                            TabText(
+                                text = stringResource(tab.titleRes),
+                                badgeCount = tab.badgeNumber,
+                                selected = state.currentPage == index,
+                            )
+                        },
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
