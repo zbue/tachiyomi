@@ -6,10 +6,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.FlipToBack
 import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarScrollBehavior
@@ -96,9 +97,10 @@ fun LibraryRegularToolbar(
         searchQuery = searchQuery,
         onChangeSearchQuery = onSearchQueryChange,
         actions = {
-            val filterTint = if (hasFilters) MaterialTheme.colorScheme.active else LocalContentColor.current
             IconButton(onClick = onClickFilter) {
-                Icon(Icons.Outlined.FilterList, contentDescription = stringResource(R.string.action_filter), tint = filterTint)
+                BadgedBox(badge = { if (hasFilters) Badge() }) {
+                    Icon(Icons.Outlined.FilterList, contentDescription = stringResource(R.string.action_filter))
+                }
             }
 
             OverflowMenu { closeMenu ->
