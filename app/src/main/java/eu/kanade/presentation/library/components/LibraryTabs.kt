@@ -6,6 +6,7 @@ import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastForEachIndexed
 import eu.kanade.domain.category.model.Category
 import eu.kanade.presentation.category.visualName
 import eu.kanade.presentation.components.Divider
@@ -28,7 +29,7 @@ fun LibraryTabs(
             // https://issuetracker.google.com/issues/242879624
             divider = {},
         ) {
-            categories.forEachIndexed { index, category ->
+            categories.fastForEachIndexed { index, category ->
                 Tab(
                     selected = currentPageIndex == index,
                     onClick = { onTabItemClick(index) },
@@ -36,9 +37,10 @@ fun LibraryTabs(
                         TabText(
                             text = category.visualName,
                             badgeCount = getNumberOfMangaForCategory(category),
+                            selected = currentPageIndex == index,
                         )
                     },
-                    unselectedContentColor = MaterialTheme.colorScheme.onSurface,
+                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

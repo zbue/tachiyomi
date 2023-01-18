@@ -17,6 +17,7 @@ import androidx.compose.ui.layout.LayoutModifier
 import androidx.compose.ui.layout.Measurable
 import androidx.compose.ui.layout.MeasureResult
 import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.debugInspectorInfo
 import androidx.compose.ui.unit.Constraints
@@ -75,6 +76,18 @@ fun Modifier.minimumTouchTargetSize(): Modifier = composed(
         MinimumTouchTargetModifier(size)
     } else {
         Modifier
+    }
+}
+
+fun Modifier.pillLayout(): Modifier = this.layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+
+    // based on the expectation of only one line of text
+    val minPadding = placeable.height / 2
+
+    val width = maxOf(placeable.width + minPadding, placeable.height)
+    layout(width, placeable.height) {
+        placeable.place((width - placeable.width) / 2, 0)
     }
 }
 
