@@ -84,7 +84,7 @@ fun LibraryRegularToolbar(
                     modifier = Modifier.weight(1f, false),
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (title.numberOfManga != null && !tabVisible) {
+                if (title.numberOfManga != null && title.numberOfManga != 0 && !tabVisible) {
                     Pill(
                         text = "${title.numberOfManga}",
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = pillAlpha),
