@@ -25,7 +25,6 @@ import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.OverflowMenu
 import eu.kanade.presentation.components.Pill
 import eu.kanade.presentation.components.SearchToolbar
-import eu.kanade.presentation.theme.active
 import eu.kanade.tachiyomi.R
 
 @Composable
