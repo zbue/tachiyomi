@@ -19,12 +19,13 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -44,6 +45,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastAll
 import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.util.fastMap
@@ -370,7 +372,12 @@ private fun MangaScreenSmallImpl(
                         key = MangaScreenItem.CHAPTER_HEADER,
                         contentType = MangaScreenItem.CHAPTER_HEADER,
                     ) {
-                        ChapterHeader(chapterCount = chapters.size)
+                        ChapterHeader(
+                            enabled = chapters.fastAll { !it.selected },
+                            hasActiveFilters = state.manga.chaptersFiltered(),
+                            chapterCount = chapters.size,
+                            onClick = onFilterClicked,
+                        )
                     }
 
                     sharedChapterItems(
@@ -571,7 +578,12 @@ fun MangaScreenLargeImpl(
                                 key = MangaScreenItem.CHAPTER_HEADER,
                                 contentType = MangaScreenItem.CHAPTER_HEADER,
                             ) {
-                                ChapterHeader(chapterCount = chapters.size)
+                                ChapterHeader(
+                                    enabled = chapters.fastAll { !it.selected },
+                                    hasActiveFilters = state.manga.chaptersFiltered(),
+                                    chapterCount = chapters.size,
+                                    onClick = onFilterButtonClicked,
+                                )
                             }
 
                             sharedChapterItems(
@@ -642,65 +654,71 @@ private fun LazyListScope.sharedChapterItems(
     onDownloadChapter: ((List<ChapterItem>, ChapterDownloadAction) -> Unit)?,
     onChapterSelected: (ChapterItem, Boolean, Boolean, Boolean) -> Unit,
 ) {
-    items(
+    itemsIndexed(
         items = chapters,
-        key = { "chapter-${it.chapter.id}" },
-        contentType = { MangaScreenItem.CHAPTER },
-    ) { chapterItem ->
+        key = { _, chapterItem -> "chapter-${chapterItem.chapter.id}" },
+        contentType = { _, _ -> MangaScreenItem.CHAPTER },
+    ) { index, chapterItem ->
         val haptic = LocalHapticFeedback.current
         val context = LocalContext.current
 
-        MangaChapterListItem(
-            title = if (manga.displayMode == Manga.CHAPTER_DISPLAY_NUMBER) {
-                stringResource(
-                    R.string.display_mode_chapter,
-                    chapterDecimalFormat.format(chapterItem.chapter.chapterNumber.toDouble()),
-                )
-            } else {
-                chapterItem.chapter.name
-            },
-            date = chapterItem.chapter.dateUpload
-                .takeIf { it > 0L }
-                ?.let {
-                    Date(it).toRelativeString(
-                        context,
-                        dateRelativeTime,
-                        dateFormat,
-                    )
-                },
-            readProgress = chapterItem.chapter.lastPageRead
-                .takeIf { !chapterItem.chapter.read && it > 0L }
-                ?.let {
+        Column {
+            MangaChapterListItem(
+                title = if (manga.displayMode == Manga.CHAPTER_DISPLAY_NUMBER) {
                     stringResource(
-                        R.string.chapter_progress,
-                        it + 1,
+                        R.string.display_mode_chapter,
+                        chapterDecimalFormat.format(chapterItem.chapter.chapterNumber.toDouble()),
+                    )
+                } else {
+                    chapterItem.chapter.name
+                },
+                date = chapterItem.chapter.dateUpload
+                    .takeIf { it > 0L }
+                    ?.let {
+                        Date(it).toRelativeString(
+                            context,
+                            dateRelativeTime,
+                            dateFormat,
+                        )
+                    },
+                readProgress = chapterItem.chapter.lastPageRead
+                    .takeIf { !chapterItem.chapter.read && it > 0L }
+                    ?.let {
+                        stringResource(
+                            R.string.chapter_progress,
+                            it + 1,
+                        )
+                    },
+                scanlator = chapterItem.chapter.scanlator.takeIf { !it.isNullOrBlank() },
+                read = chapterItem.chapter.read,
+                bookmark = chapterItem.chapter.bookmark,
+                selected = chapterItem.selected,
+                downloadIndicatorEnabled = chapters.fastAll { !it.selected },
+                downloadStateProvider = { chapterItem.downloadState },
+                downloadProgressProvider = { chapterItem.downloadProgress },
+                onLongClick = {
+                    onChapterSelected(chapterItem, !chapterItem.selected, true, true)
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                },
+                onClick = {
+                    onChapterItemClick(
+                        chapterItem = chapterItem,
+                        chapters = chapters,
+                        onToggleSelection = { onChapterSelected(chapterItem, !chapterItem.selected, true, false) },
+                        onChapterClicked = onChapterClicked,
                     )
                 },
-            scanlator = chapterItem.chapter.scanlator.takeIf { !it.isNullOrBlank() },
-            read = chapterItem.chapter.read,
-            bookmark = chapterItem.chapter.bookmark,
-            selected = chapterItem.selected,
-            downloadIndicatorEnabled = chapters.fastAll { !it.selected },
-            downloadStateProvider = { chapterItem.downloadState },
-            downloadProgressProvider = { chapterItem.downloadProgress },
-            onLongClick = {
-                onChapterSelected(chapterItem, !chapterItem.selected, true, true)
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            },
-            onClick = {
-                onChapterItemClick(
-                    chapterItem = chapterItem,
-                    chapters = chapters,
-                    onToggleSelection = { onChapterSelected(chapterItem, !chapterItem.selected, true, false) },
-                    onChapterClicked = onChapterClicked,
-                )
-            },
-            onDownloadClick = if (onDownloadChapter != null) {
-                { onDownloadChapter(listOf(chapterItem), it) }
-            } else {
-                null
-            },
-        )
+                onDownloadClick = if (onDownloadChapter != null) {
+                    { onDownloadChapter(listOf(chapterItem), it) }
+                } else {
+                    null
+                },
+            )
+
+            if (index < chapters.lastIndex) {
+                Divider(modifier = Modifier.padding(start = 16.dp))
+            }
+        }
     }
 }
 
