@@ -59,7 +59,7 @@ fun MangaChapterListItem(
                 onClick = onClick,
                 onLongClick = onLongClick,
             )
-            .padding(start = 16.dp, top = 12.dp, end = 8.dp, bottom = 12.dp),
+            .padding(start = 16.dp, top = 10.dp, end = 8.dp, bottom = 10.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {
             val textAlpha = remember(read) { if (read) ReadItemAlpha else 1f }
@@ -86,7 +86,7 @@ fun MangaChapterListItem(
                     modifier = Modifier.alpha(textAlpha),
                 )
             }
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Row(modifier = Modifier.alpha(textSubtitleAlpha)) {
                 ProvideTextStyle(
                     value = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
