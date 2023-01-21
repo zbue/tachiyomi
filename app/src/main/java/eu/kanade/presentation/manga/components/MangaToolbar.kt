@@ -1,16 +1,12 @@
 package eu.kanade.presentation.manga.components
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.FilterList
-import androidx.compose.material.icons.outlined.FlipToBack
 import androidx.compose.material.icons.outlined.SelectAll
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -20,40 +16,44 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import eu.kanade.presentation.components.DownloadDropdownMenu
+import androidx.compose.ui.util.fastAny
+import eu.kanade.domain.chapter.model.Chapter
 import eu.kanade.presentation.components.OverflowMenu
-import eu.kanade.presentation.manga.DownloadAction
 import eu.kanade.tachiyomi.R
+import eu.kanade.tachiyomi.ui.manga.ChapterItem
 
 @Composable
 fun MangaToolbar(
+    selected: List<ChapterItem>,
+    isLocal: Boolean,
+    isLocalOrStub: Boolean,
     modifier: Modifier = Modifier,
     title: String,
     titleAlphaProvider: () -> Float,
     backgroundAlphaProvider: () -> Float = titleAlphaProvider,
-    hasFilters: Boolean,
     onBackClicked: () -> Unit,
-    onClickFilter: () -> Unit,
+    onSelectAll: () -> Unit,
+    onBookmarkUnbookmarkClicked: (List<Chapter>, bookmarked: Boolean) -> Unit,
+    onMarkAsReadUnreadClicked: (List<Chapter>, markAsRead: Boolean) -> Unit,
+    onDownloadClicked: ((List<Chapter>) -> Unit),
+    onDeleteClicked: (List<Chapter>) -> Unit,
+    onMarkPreviousAsReadClicked: (Chapter) -> Unit,
     onClickShare: (() -> Unit)?,
-    onClickDownload: ((DownloadAction) -> Unit)?,
     onClickEditCategory: (() -> Unit)?,
     onClickMigrate: (() -> Unit)?,
-    // For action mode
-    actionModeCounter: Int,
-    onSelectAll: () -> Unit,
-    onInvertSelection: () -> Unit,
 ) {
     Column(
         modifier = modifier,
     ) {
+        val chapters = selected.map { it.chapter }
+        val actionModeCounter = selected.count { it.selected }
         val isActionMode = actionModeCounter > 0
+
         TopAppBar(
             title = {
                 Text(
@@ -73,44 +73,68 @@ fun MangaToolbar(
             },
             actions = {
                 if (isActionMode) {
+                    IconButton(onClick = { onDeleteClicked(chapters) }, enabled = selected.fastAny { it.isDownloaded } && !isLocal) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = stringResource(R.string.action_delete),
+                        )
+                    }
                     IconButton(onClick = onSelectAll) {
                         Icon(
                             imageVector = Icons.Outlined.SelectAll,
                             contentDescription = stringResource(R.string.action_select_all),
                         )
                     }
-                    IconButton(onClick = onInvertSelection) {
+                    IconButton(onClick = { onDownloadClicked(chapters) }, enabled = !isLocalOrStub) {
                         Icon(
-                            imageVector = Icons.Outlined.FlipToBack,
-                            contentDescription = stringResource(R.string.action_select_inverse),
+                            imageVector = Icons.Outlined.Download,
+                            contentDescription = stringResource(R.string.manga_download),
+                        )
+                    }
+                    OverflowMenu { closeMenu ->
+                        DropdownMenuItem(
+                            text = { Text(text = stringResource(R.string.action_bookmark)) },
+                            onClick = {
+                                onBookmarkUnbookmarkClicked(chapters, true)
+                                closeMenu()
+                            },
+                            enabled = chapters.fastAny { !it.bookmark },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(text = stringResource(R.string.action_remove_bookmark)) },
+                            onClick = {
+                                onBookmarkUnbookmarkClicked(chapters, false)
+                                closeMenu()
+                            },
+                            enabled = chapters.fastAny { it.bookmark },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(text = stringResource(R.string.action_mark_as_read)) },
+                            onClick = {
+                                onMarkAsReadUnreadClicked(chapters, true)
+                                closeMenu()
+                            },
+                            enabled = chapters.fastAny { !it.read },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(text = stringResource(R.string.action_mark_as_unread)) },
+                            onClick = {
+                                onMarkAsReadUnreadClicked(chapters, false)
+                                closeMenu()
+                            },
+                            enabled = chapters.fastAny { it.read || it.lastPageRead > 0L },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(text = stringResource(R.string.action_mark_previous_as_read)) },
+                            onClick = {
+                                onMarkPreviousAsReadClicked(chapters[0])
+                                closeMenu()
+                            },
+                            enabled = actionModeCounter == 1,
                         )
                     }
                 } else {
-                    if (onClickDownload != null) {
-                        val (downloadExpanded, onDownloadExpanded) = remember { mutableStateOf(false) }
-                        Box {
-                            IconButton(onClick = { onDownloadExpanded(!downloadExpanded) }) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Download,
-                                    contentDescription = stringResource(R.string.manga_download),
-                                )
-                            }
-                            val onDismissRequest = { onDownloadExpanded(false) }
-                            DownloadDropdownMenu(
-                                expanded = downloadExpanded,
-                                onDismissRequest = onDismissRequest,
-                                onDownloadClicked = onClickDownload,
-                            )
-                        }
-                    }
-
-                    IconButton(onClick = onClickFilter) {
-                        BadgedBox(badge = { if (hasFilters) Badge() }) {
-                            Icon(Icons.Outlined.FilterList, contentDescription = stringResource(R.string.action_filter))
-                        }
-                    }
-
-                    if (onClickEditCategory != null || onClickMigrate != null || onClickShare != null) {
+                    if (onClickEditCategory != null || onClickMigrate != null) {
                         OverflowMenu { closeMenu ->
                             if (onClickEditCategory != null) {
                                 DropdownMenuItem(
