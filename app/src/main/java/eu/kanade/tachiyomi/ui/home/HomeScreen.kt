@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,6 +51,8 @@ import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.more.MoreTab
 import eu.kanade.tachiyomi.ui.updates.UpdatesTab
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -63,7 +66,9 @@ object HomeScreen : Screen {
 
     private val librarySearchEvent = Channel<String>()
     private val openTabEvent = Channel<Tab>()
-    private val showBottomNavEvent = Channel<Boolean>()
+
+    private val _showBottomNavEvent = MutableStateFlow(true)
+    private val showBottomNavEvent = _showBottomNavEvent.asStateFlow()
 
     private const val TabFadeDuration = 200
 
@@ -95,9 +100,7 @@ object HomeScreen : Screen {
                     },
                     bottomBar = {
                         if (!isTabletUi()) {
-                            val bottomNavVisible by produceState(initialValue = true) {
-                                showBottomNavEvent.receiveAsFlow().collectLatest { value = it }
-                            }
+                            val bottomNavVisible by showBottomNavEvent.collectAsState()
                             AnimatedVisibility(
                                 visible = bottomNavVisible,
                                 enter = expandVertically(),
@@ -203,6 +206,7 @@ object HomeScreen : Screen {
         val navigator = LocalNavigator.currentOrThrow
         val scope = rememberCoroutineScope()
         val selected = tabNavigator.current::class == tab::class
+        val canNavigate by showBottomNavEvent.collectAsState()
         NavigationRailItem(
             selected = selected,
             onClick = {
@@ -213,6 +217,7 @@ object HomeScreen : Screen {
                 }
             },
             icon = { NavigationIconItem(tab) },
+            enabled = canNavigate,
             label = {
                 Text(
                     text = tab.options.title,
@@ -287,8 +292,8 @@ object HomeScreen : Screen {
         openTabEvent.send(tab)
     }
 
-    suspend fun showBottomNav(show: Boolean) {
-        showBottomNavEvent.send(show)
+    fun showBottomNav(show: Boolean) {
+        _showBottomNavEvent.value = show
     }
 
     sealed class Tab {
