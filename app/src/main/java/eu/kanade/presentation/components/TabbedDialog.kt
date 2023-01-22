@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
@@ -29,6 +30,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachIndexed
+import eu.kanade.presentation.util.padding
 import eu.kanade.tachiyomi.R
 import kotlinx.coroutines.launch
 
@@ -53,9 +55,11 @@ fun TabbedDialog(
         Column {
             Row {
                 TabRow(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = MaterialTheme.padding.medium),
                     selectedTabIndex = pagerState.currentPage,
-                    indicator = { TabIndicator(it[pagerState.currentPage]) },
+                    indicator = { TabCustomIndicator(it[pagerState.currentPage]) },
                     divider = {},
                 ) {
                     tabTitles.fastForEachIndexed { i, tab ->
@@ -63,23 +67,15 @@ fun TabbedDialog(
                         Tab(
                             selected = selected,
                             onClick = { scope.launch { pagerState.animateScrollToPage(i) } },
-                            text = {
-                                Text(
-                                    text = tab,
-                                    color = if (selected) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                )
-                            },
+                            text = { Text(text = tab) },
+                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            interactionSource = remember { NoRippleInteractionSource() },
                         )
                     }
                 }
 
                 tabOverflowMenuContent?.let { MoreMenu(it) }
             }
-            Divider()
 
             val density = LocalDensity.current
             var largestHeight by rememberSaveable { mutableStateOf(0f) }
@@ -88,6 +84,7 @@ fun TabbedDialog(
                 count = tabTitles.size,
                 state = pagerState,
                 verticalAlignment = Alignment.Top,
+                userScrollEnabled = false,
             ) { page ->
                 Box(
                     modifier = Modifier.onSizeChanged {

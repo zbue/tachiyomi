@@ -12,12 +12,15 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
@@ -25,8 +28,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidthIn
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.material.SwipeableState
 import androidx.compose.material.rememberSwipeableState
@@ -204,6 +209,7 @@ fun AdaptiveSheetImpl(
             }
         }
     } else {
+        val handleAlpha by animateFloatAsState(if (enableSwipeDismiss) 0.4f else 0.12f)
         val swipeState = rememberSwipeableState(
             initialValue = 1,
             animationSpec = SheetAnimationSpec,
@@ -272,7 +278,22 @@ fun AdaptiveSheetImpl(
                 tonalElevation = tonalElevation,
                 content = {
                     BackHandler(enabled = swipeState.targetValue == 0, onBack = internalOnDismissRequest)
-                    content()
+                    Column {
+                        Spacer(Modifier.height(16.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(32.dp)
+                                .height(4.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = handleAlpha),
+                                    shape = CircleShape,
+                                )
+                                .align(Alignment.CenterHorizontally),
+                        )
+                        Spacer(Modifier.height(16.dp))
+
+                        content()
+                    }
                 },
             )
 
